@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Generated charts and decks
+output_*/
+*.png
+*.pptx
+
+# Customer captures — real data is large and contains management IPs/serials.
+# The redacted fixtures in references/ are deliberate and stay tracked.
+Data_Files/
+*.xlsx
+!references/*_sample.xlsx
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
