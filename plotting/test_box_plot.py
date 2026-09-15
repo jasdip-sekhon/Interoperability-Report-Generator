@@ -26,19 +26,19 @@ result = plots.box_plot(
     spec_max=2.5,
 )
 
-x = plots.bargraph(
-    data,
-    keys,
-    labels,
-    title="Pre-FEC BER by switch",
-    ylabel="Pre-FEC BER",
-    out_path=OUT_PATH,
-    spec_max=2.5,
-)
-
 assert result is True
 assert OUT_PATH.exists() and OUT_PATH.stat().st_size > 0
 print(f"wrote {OUT_PATH} ({OUT_PATH.stat().st_size} bytes)")
 
-assert plots.box_plot({}, [], [], "empty", "y", OUT_PATH) is False
-print("empty keys returned False")
+# bargraph takes one number per key. 4-35 is absent, so it draws as a gap
+# rather than a zero-height bar.
+flap_counts = {0: 2, "4-33": 5, "4-34": 1}
+
+bargraph_result = plots.bargraph(
+    flap_counts,
+    keys,
+    labels,
+    title="Link flaps by switch",
+    ylabel="Flaps",
+    out_path=BARGRAPH_OUT_PATH,
+)

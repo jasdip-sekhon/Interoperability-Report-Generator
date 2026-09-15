@@ -10,11 +10,23 @@ with open(STYLE_PATH) as f:
     STYLE = yaml.safe_load(f)
 
 class Plots:
-
     def __init__(self, style=None):
-        self.style = style if style is not None else dict(STYLE)
+        if style is not None:
+            self.style = style
+        else:
+            self.style = dict(STYLE)
 
-    def _process_data(self, data, keys):
+    def _process_scalars(self, data, keys):
+        heights = []
+        for i in keys:
+            value = data.get(i)
+            if value is None:
+                heights.append(float("nan"))
+            else:
+                heights.append(float(value))
+        return heights
+    
+    def _process_sample(self, data, keys):
         values = []
         for i in keys:
             series = data.get(i, [])
@@ -37,7 +49,7 @@ class Plots:
         if len(labels) > self.style["VERTICAL_LABEL_ENTRIES"]:
             height = self.style["MIN_FIG_HEIGHT_IN"] + grow
         else:
-            height = self.style["MIN_FIG_HEIGHT_IN"] + 0
+            height = self.style["MIN_FIG_HEIGHT_IN"]
         return width, height
 
     def _set_category_ticks(self, axes, labels):
@@ -56,12 +68,30 @@ class Plots:
         plt.close(figure)
         return True
 
+    def bargraph(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
+        if not keys:
+            return False
+        figure, axes = plt.subplots(figsize=self._figsize(labels))
+
+        heights = self._process_scalars(data, keys)
+        x = range(1, len(heights) + 1)
+        if not colors:
+            colors = [self.style["DEFAULT_COLOR"]] * len(keys)
+        axes.bar(x, heights, color=colors)
+        self._set_category_ticks(axes, labels)
+        axes.set_title(title)
+        axes.set_ylabel(ylabel)
+        if xlabel:
+            axes.set_xlabel(xlabel)
+        self._draw_limits(axes, spec_min, spec_max)
+        return self._finish(figure, out_path)
+    
     def box_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=self._figsize(labels))
 
-        values = self._process_data(data, keys)
+        values = self._process_sample(data, keys)
         boxplot = axes.boxplot(values, patch_artist=True)
 
         self._set_category_ticks(axes, labels)
@@ -70,7 +100,8 @@ class Plots:
         if xlabel:
             axes.set_xlabel(xlabel)
         self._draw_limits(axes, spec_min, spec_max)
-        colors = colors or [self.style["DEFAULT_COLOR"]] * len(keys)
+        if not colors:
+            colors = [self.style["DEFAULT_COLOR"]] * len(keys)
         boxes = boxplot["boxes"]
         for i in range(len(boxes)):
             patch = boxes[i]
@@ -78,21 +109,6 @@ class Plots:
             patch.set_facecolor(color)
         return self._finish(figure, out_path)
 
-    def bargraph(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
-        if not keys:
-            return False
-        figure, axes = plt.subplots(figsize=self._figsize(labels))
-
-        values = self._process_data(data, keys)
-        bars = axes.bar(range(1, len(labels) + 1), values, color=colors or [self.style["DEFAULT_COLOR"]] * len(keys))
-
-        self._set_category_ticks(axes, labels)
-        axes.set_title(title)
-        axes.set_ylabel(ylabel)
-        if xlabel:
-            axes.set_xlabel(xlabel)
-        self._draw_limits(axes, spec_min, spec_max)
-        return self._finish(figure, out_path)
 
     def dot_plot(self):
         pass
