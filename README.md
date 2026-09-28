@@ -8,18 +8,24 @@ Early days — only `plotting/` has working code.
 ## Layout
 
 ```
-main.py         entry point
-analysis/       captures -> findings
-plotting/       findings -> PNG charts on disk
-deck/           PNGs -> slide deck
-references/     redacted sample captures used as fixtures
+main.py                  entry point
+plotting/
+  plotting.py            the chart library — data in, PNG out
+  plotting_runner.py     builds every chart for a run
+  plotting_style.yaml    colours, sizing, DPI
+  interconnects/         topology xlsx -> yaml (x-axis labels)
+  data/                  captures xlsx -> yaml (measurements)
+deck/                    PNGs -> slide deck
+output/                  generated PNGs — wiped each run, not tracked
+references/              redacted sample captures used as fixtures
 ```
+
+`plotting.py` knows nothing about switches or interconnects — it takes `data`, `keys`,
+`labels` and draws. Everything domain-specific lives in `plotting_runner.py`.
 
 Rendering and deck building are joined by a folder of PNGs, not a function call, so charts
 can be inspected without building a deck and the deck can be rebuilt without re-rendering.
 Wipe the output folder each run — a stale PNG is indistinguishable from a fresh one.
-
-Chart styling lives in [`plotting/plotting_style.yaml`](plotting/plotting_style.yaml).
 
 ## Setup
 
@@ -36,10 +42,10 @@ On macOS/Linux the activation line is `source .venv/bin/activate`.
 ## Running the plotting test
 
 ```bash
-python plotting/test_box_plot.py
+python plotting/test_plotting.py
 ```
 
-Renders a chart to `plotting/test_box_plot.png` from inline sample data.
+Renders one of each chart type to `output/` from inline sample data.
 
 ## Data
 

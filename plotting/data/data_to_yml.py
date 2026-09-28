@@ -1,0 +1,95 @@
+from openpyxl import load_workbook
+import yaml
+
+def _find_sheet(wb, sheet_name, required=True):
+    # Search for a sheet by name, allowing for a numeric prefix before an underscore
+    for name in wb.sheetnames:
+        parts = name.split("_", 1)
+        if len(parts) == 2 and parts[1] == sheet_name:
+            return wb[name]
+    if required:
+        raise ValueError(f"Sheet '{sheet_name}' not found in workbook.")
+    return None
+
+def _read_sheet(sheet):
+    rows = []
+    for row in sheet.iter_rows(values_only=True):
+        rows.append(row)
+    if not rows:
+        return []
+
+    headers = rows[0]
+    data = []
+    for row in rows[1:]:
+        record = {}
+        i = 0
+        for header in headers:
+            if i < len(row):
+                record[header] = row[i]
+            i = i + 1
+        data.append(record)
+    return data
+
+def _norm_switch(value):
+    # Normalize switch values to strings
+    if value is None:
+        return None
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return str(value).strip()
+
+def collect_link_flaps(flap_records):
+    pass
+
+def collect_pre_fec_ber(ber_records):
+    pass
+
+def collect_ber_from_vdm(module_records):
+    pass
+
+def collect_temps(module_records):
+    pass
+
+def collect_sensors(sensor_records):
+    pass
+
+def collect_meta_data(log_records, module_records):
+    pass
+
+
+def data_to_yml(data, yml_file):
+    wb = load_workbook(data)
+
+    log_sheet = _find_sheet(wb, "log") # meta (device model, IP, start time)
+    flap_sheet = _find_sheet(wb, "get_link_flap") # bargraph 
+    module_sheet = _find_sheet(wb, "get_module_info") # box_plot + dot_plot (VDM Fallback), temps, spec_max
+    sensor_sheet = _find_sheet(wb, "get_switch_sensor")
+    fec_sheet = _find_sheet(wb, "get_fec_counter", required=False) # box_plot + dot_plot (ASIC BER)
+
+    log_records = _read_sheet(log_sheet)
+    flap_records = _read_sheet(flap_sheet)
+    module_records = _read_sheet(module_sheet)
+    sensor_records = _read_sheet(sensor_sheet)
+
+    # reset captures have no FEC sheet — fall back to the module's own VDM reading
+    if fec_sheet is None:
+        ber = collect_ber_from_vdm(module_records)
+    else:
+        ber = collect_pre_fec_ber(_read_sheet(fec_sheet))
+
+    measurements = {
+        "meta": collect_meta_data(log_records, module_records),
+        "flaps": collect_link_flaps(flap_records),
+        "ber": ber,
+        "temps": collect_temps(module_records),
+        "sensors": collect_sensors(sensor_records),
+    }
+
+    with open(yml_file, "w") as f:
+        yaml.dump(measurements, f, default_flow_style=False, sort_keys=False)
+
+    return measurements
+
+
+if __name__ == "__main__":
+    pass
