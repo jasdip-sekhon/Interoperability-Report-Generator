@@ -18,7 +18,7 @@ def load_interconnects(interconnects_file):
     with open(interconnects_file, 'r') as f:
         return yaml.safe_load(f)
 
-def build_ber_type_chart_x_axis(interconnects):
+def build_per_port_label_chart_x_axis(interconnects):
     keys = []
     labels = []
     for record in interconnects:
@@ -26,7 +26,7 @@ def build_ber_type_chart_x_axis(interconnects):
         labels.append(record["FEC-BER / T-Code x-axis label"])
     return keys, labels
 
-def build_switch_type_x_axis(interconnects):
+def collect_per_switch_label_x_axis(interconnects):
     keys = []
     for record in interconnects:
         switch = record["Rx Switch"]
@@ -40,8 +40,8 @@ def build_switch_type_x_axis(interconnects):
 def generate_plots():
     interconnects_yml = Path(__file__).parent / "interconnects" / "interconnects.yml"
     interconnects = load_interconnects(interconnects_yml)
-    interconnect_keys, interconnect_labels = build_ber_type_chart_x_axis(interconnects)
-    switch_keys, switch_labels = build_switch_type_x_axis(interconnects)
+    interconnect_keys, interconnect_labels = build_per_port_label_chart_x_axis(interconnects)
+    switch_keys, switch_labels = collect_per_switch_label_x_axis(interconnects)
 
 
     plots.bargraph(flap_counts, switch_keys, switch_labels,
@@ -50,7 +50,7 @@ def generate_plots():
 
     plots.box_plot(ber_data, interconnect_keys, interconnect_labels,
                    title="Pre-FEC BER by interconnect", ylabel="Pre-FEC BER",
-                   out_path=output_path("pre_fec_ber.png"), spec_max=2.5)
+                   out_path=output_path("pre_fec_ ber.png"), spec_max=2.5)
 
     plots.dot_plot(ber_data, interconnect_keys, interconnect_labels,
                    title="Pre-FEC BER by interconnect", ylabel="Pre-FEC BER",
