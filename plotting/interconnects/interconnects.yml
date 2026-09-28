@@ -1,0 +1,245 @@
+- Rx Switch: SW0
+  Rx Port-Lane: 1-1
+  Rx Vendor: NW1
+  Tx Switch: Ixia
+  Tx Port-Lane: 1-1
+  Tx Vendor: Ixia
+  FEC-BER / T-Code x-axis label: 1-1-Tx-Ixia ==> 1-1-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-2
+  Rx Vendor: NW1
+  Tx Switch: Ixia
+  Tx Port-Lane: 1-2
+  Tx Vendor: Ixia
+  FEC-BER / T-Code x-axis label: 1-2-Tx-Ixia ==> 1-2-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-3
+  Rx Vendor: NW1
+  Tx Switch: Ixia
+  Tx Port-Lane: 1-3
+  Tx Vendor: Ixia
+  FEC-BER / T-Code x-axis label: 1-3-Tx-Ixia ==> 1-3-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-4
+  Rx Vendor: NW1
+  Tx Switch: Ixia
+  Tx Port-Lane: 1-4
+  Tx Vendor: Ixia
+  FEC-BER / T-Code x-axis label: 1-4-Tx-Ixia ==> 1-4-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 2-1
+  Rx Vendor: NW4
+  Tx Switch: Ixia
+  Tx Port-Lane: 2-1
+  Tx Vendor: Ixia
+  FEC-BER / T-Code x-axis label: 2-1-Tx-Ixia ==> 2-1-Rx-NW4
+- Rx Switch: SW0
+  Rx Port-Lane: 1-5
+  Rx Vendor: NW1
+  Tx Switch: 4-36
+  Tx Port-Lane: 1-1
+  Tx Vendor: F2
+  FEC-BER / T-Code x-axis label: 1-1-Tx-F2 ==> 1-5-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-6
+  Rx Vendor: NW1
+  Tx Switch: 4-36
+  Tx Port-Lane: 1-2
+  Tx Vendor: F2
+  FEC-BER / T-Code x-axis label: 1-2-Tx-F2 ==> 1-6-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-7
+  Rx Vendor: NW1
+  Tx Switch: 4-36
+  Tx Port-Lane: 1-3
+  Tx Vendor: F2
+  FEC-BER / T-Code x-axis label: 1-3-Tx-F2 ==> 1-7-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 1-8
+  Rx Vendor: NW1
+  Tx Switch: 4-36
+  Tx Port-Lane: 1-4
+  Tx Vendor: F2
+  FEC-BER / T-Code x-axis label: 1-4-Tx-F2 ==> 1-8-Rx-NW1
+- Rx Switch: SW0
+  Rx Port-Lane: 2-2
+  Rx Vendor: NW4
+  Tx Switch: 4-35
+  Tx Port-Lane: 1-1
+  Tx Vendor: A15
+  FEC-BER / T-Code x-axis label: 1-1-Tx-A15 ==> 2-2-Rx-NW4
+- Rx Switch: SW0
+  Rx Port-Lane: 3-1
+  Rx Vendor: NW5
+  Tx Switch: 4-35
+  Tx Port-Lane: 32-1
+  Tx Vendor: A5
+  FEC-BER / T-Code x-axis label: 32-1-Tx-A5 ==> 3-1-Rx-NW5
+- Rx Switch: 4-33
+  Rx Port-Lane: 1-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 4-5
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 4-5-Tx-NW3 ==> 1-1-Rx-F1
+- Rx Switch: 4-33
+  Rx Port-Lane: 1-2
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 4-6
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 4-6-Tx-NW3 ==> 1-2-Rx-F1
+- Rx Switch: 4-33
+  Rx Port-Lane: 1-3
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 4-7
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 4-7-Tx-NW3 ==> 1-3-Rx-F1
+- Rx Switch: 4-33
+  Rx Port-Lane: 1-4
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 4-8
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 4-8-Tx-NW3 ==> 1-4-Rx-F1
+- Rx Switch: 4-33
+  Rx Port-Lane: 2-1
+  Rx Vendor: B12
+  Tx Switch: SW0
+  Tx Port-Lane: 8-1
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 8-1-Tx-NW3 ==> 2-1-Rx-B12
+- Rx Switch: 4-33
+  Rx Port-Lane: 2-2
+  Rx Vendor: B12
+  Tx Switch: SW0
+  Tx Port-Lane: 8-2
+  Tx Vendor: NW3
+  FEC-BER / T-Code x-axis label: 8-2-Tx-NW3 ==> 2-2-Rx-B12
+- Rx Switch: 4-34
+  Rx Port-Lane: 1-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 3-2
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 3-2-Tx-NW5 ==> 1-1-Rx-F1
+- Rx Switch: 4-34
+  Rx Port-Lane: 2-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 7-1
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 7-1-Tx-NW5 ==> 2-1-Rx-F1
+- Rx Switch: 4-34
+  Rx Port-Lane: 3-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 7-2
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 7-2-Tx-NW5 ==> 3-1-Rx-F1
+- Rx Switch: 4-34
+  Rx Port-Lane: 4-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 11-1
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 11-1-Tx-NW5 ==> 4-1-Rx-F1
+- Rx Switch: 4-34
+  Rx Port-Lane: 5-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 11-2
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 11-2-Tx-NW5 ==> 5-1-Rx-F1
+- Rx Switch: 4-34
+  Rx Port-Lane: 6-1
+  Rx Vendor: F1
+  Tx Switch: SW0
+  Tx Port-Lane: 15-1
+  Tx Vendor: NW5
+  FEC-BER / T-Code x-axis label: 15-1-Tx-NW5 ==> 6-1-Rx-F1
+- Rx Switch: 4-35
+  Rx Port-Lane: 1-1
+  Rx Vendor: A15
+  Tx Switch: SW0
+  Tx Port-Lane: 2-2
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 2-2-Tx-NW4 ==> 1-1-Rx-A15
+- Rx Switch: 4-35
+  Rx Port-Lane: 2-1
+  Rx Vendor: C7
+  Tx Switch: SW0
+  Tx Port-Lane: 6-1
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 6-1-Tx-NW4 ==> 2-1-Rx-C7
+- Rx Switch: 4-35
+  Rx Port-Lane: 3-1
+  Rx Vendor: C7
+  Tx Switch: SW0
+  Tx Port-Lane: 6-2
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 6-2-Tx-NW4 ==> 3-1-Rx-C7
+- Rx Switch: 4-35
+  Rx Port-Lane: 4-1
+  Rx Vendor: B12
+  Tx Switch: SW0
+  Tx Port-Lane: 10-1
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 10-1-Tx-NW4 ==> 4-1-Rx-B12
+- Rx Switch: 4-35
+  Rx Port-Lane: 5-1
+  Rx Vendor: A17
+  Tx Switch: SW0
+  Tx Port-Lane: 10-2
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 10-2-Tx-NW4 ==> 5-1-Rx-A17
+- Rx Switch: 4-35
+  Rx Port-Lane: 6-1
+  Rx Vendor: A5
+  Tx Switch: SW0
+  Tx Port-Lane: 14-1
+  Tx Vendor: NW4
+  FEC-BER / T-Code x-axis label: 14-1-Tx-NW4 ==> 6-1-Rx-A5
+- Rx Switch: 4-36
+  Rx Port-Lane: 1-1
+  Rx Vendor: F2
+  Tx Switch: SW0
+  Tx Port-Lane: 1-5
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 1-5-Tx-NW1 ==> 1-1-Rx-F2
+- Rx Switch: 4-36
+  Rx Port-Lane: 1-2
+  Rx Vendor: F2
+  Tx Switch: SW0
+  Tx Port-Lane: 1-6
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 1-6-Tx-NW1 ==> 1-2-Rx-F2
+- Rx Switch: 4-36
+  Rx Port-Lane: 1-3
+  Rx Vendor: F2
+  Tx Switch: SW0
+  Tx Port-Lane: 1-7
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 1-7-Tx-NW1 ==> 1-3-Rx-F2
+- Rx Switch: 4-36
+  Rx Port-Lane: 1-4
+  Rx Vendor: F2
+  Tx Switch: SW0
+  Tx Port-Lane: 1-8
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 1-8-Tx-NW1 ==> 1-4-Rx-F2
+- Rx Switch: 4-36
+  Rx Port-Lane: 2-1
+  Rx Vendor: C7
+  Tx Switch: SW0
+  Tx Port-Lane: 5-1
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 5-1-Tx-NW1 ==> 2-1-Rx-C7
+- Rx Switch: 4-36
+  Rx Port-Lane: 2-2
+  Rx Vendor: C7
+  Tx Switch: SW0
+  Tx Port-Lane: 5-2
+  Tx Vendor: NW1
+  FEC-BER / T-Code x-axis label: 5-2-Tx-NW1 ==> 2-2-Rx-C7
