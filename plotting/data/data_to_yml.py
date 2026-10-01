@@ -327,3 +327,4 @@ if __name__ == "__main__":
         output_yml = output_dir / (Path(capture).stem + ".yml")
         data_to_yml(references / capture, output_yml)
         print(f"Wrote {output_yml}")
+        print(f"  {output_yml.stat().st_size} bytes")

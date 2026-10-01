@@ -15,6 +15,7 @@ plotting/
   plotting_style.yaml    colours, sizing, DPI
   interconnects/         topology xlsx -> yaml (x-axis labels)
   data/                  captures xlsx -> yaml (measurements)
+    output/              the generated measurement yaml
 deck/                    PNGs -> slide deck
 output/                  generated PNGs — wiped each run, not tracked
 references/              redacted sample captures used as fixtures
@@ -39,13 +40,16 @@ pip install -r requirements.txt
 
 On macOS/Linux the activation line is `source .venv/bin/activate`.
 
-## Running the plotting test
+## Running
 
 ```bash
-python plotting/test_plotting.py
+python plotting/data/data_to_yml.py                   # captures  -> measurement yaml
+python plotting/interconnects/interconnects_to_yml.py # topology   -> label yaml
+python plotting/test_plotting.py                      # renders one of each chart type
 ```
 
-Renders one of each chart type to `output/` from inline sample data.
+The two converters read `references/` and are only rerun when a capture changes; the
+charts read their yaml, never the spreadsheets.
 
 ## Data
 
