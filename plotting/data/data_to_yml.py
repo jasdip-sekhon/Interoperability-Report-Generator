@@ -41,8 +41,7 @@ def _norm_switch(value):
     return str(value).strip()
 
 def _group_by_lane(records, column):
-    # TreeL1/L2/L3 is switch/port/lane; one capture samples each lane many times, so
-    # every reading for a lane lands in that lane's list
+    # TreeL1/L2/L3 is switch/port/lane; one capture samples each lane many times
     lanes = {}
     for record in records:
         key = (_norm_switch(record["TreeL1"]), record["TreeL2"], record["TreeL3"])
@@ -51,17 +50,35 @@ def _group_by_lane(records, column):
         lanes[key].append(record[column])
     return lanes
 
-def collect_link_flaps(flap_records, test_type):
+def collect_link_flaps(flap_records):
     lanes = _group_by_lane(flap_records, "Down->Up")
 
     flap_data = []
     for key in lanes:
         switch, port, lane = key
+        raw_values = lanes[key]
+
+        # Fixes the "Down->Up" count by subtracting 1 from each value
+        count = 0
+        for raw in raw_values:
+            if raw is None:
+                continue
+            corrected = max(0, raw - 1)
+            if corrected > count:
+                count = corrected
+
+       # Determine if the link never recovered (all raw values are 0)
+        never_recovered = True
+        for raw in raw_values:
+            if raw != 0:
+                never_recovered = False
+
         flap_data.append({
             "switch": switch,
             "port": port,
             "lane": lane,
-            "values": lanes[key],
+            "count": count,
+            "never_recovered": never_recovered,
         })
     return flap_data
 
@@ -121,7 +138,7 @@ def data_to_yml(data, yml_file):
 
     measurements = {
         "meta": collect_meta_data(log_records, module_records),
-        "flaps": collect_link_flaps(flap_records, test_type),
+        "flaps": collect_link_flaps(flap_records),
         "ber": ber,
         "temps": collect_temps(module_records),
         "sensors": collect_sensors(sensor_records),
