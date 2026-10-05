@@ -38,7 +38,7 @@ def collect_per_switch_label_x_axis(interconnects):
     return keys, labels
 
 def generate_plots():
-    interconnects_yml = Path(__file__).parent / "interconnects" / "interconnects.yml"
+    interconnects_yml = PROJECT_ROOT / "interconnects" / "interconnects.yml"
     interconnects = load_interconnects(interconnects_yml)
     interconnect_keys, interconnect_labels = build_per_port_label_chart_x_axis(interconnects)
     switch_keys, switch_labels = collect_per_switch_label_x_axis(interconnects)

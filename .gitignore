@@ -6,9 +6,12 @@ venv/
 *.egg-info/
 
 # Generated charts and decks
-output_*/
+output/
 *.png
 *.pptx
+
+# Parsed captures — rebuilt from references/ by data/data_to_yml.py
+data/output/
 
 Data_Files/
 *.xlsx

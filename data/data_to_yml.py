@@ -319,7 +319,7 @@ def data_to_yml(data, yml_file):
 
 
 if __name__ == "__main__":
-    references = Path(__file__).parent.parent.parent / "references"
+    references = Path(__file__).parent.parent / "references"
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
     captures = ["soak_sample.xlsx", "reset_dut_sample.xlsx", "reset_ref_sample.xlsx"]

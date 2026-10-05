@@ -30,7 +30,7 @@ def interconnects_to_yml(interconnects_file, output_yml):
     return interconnects
 
 if __name__ == "__main__":
-    interconnects_file = Path(__file__).parent.parent.parent / "references" / "interconnects_sample.xlsx"
+    interconnects_file = Path(__file__).parent.parent / "references" / "interconnects_sample.xlsx"
     output_yml = Path(__file__).parent / "interconnects.yml"
     interconnects_to_yml(interconnects_file, output_yml)
     print(f"Wrote {output_yml}")
