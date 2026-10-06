@@ -16,6 +16,25 @@ def _find_sheet(wb, sheet_name, required=True):
         raise ValueError(f"Sheet '{sheet_name}' not found in workbook.")
     return None
 
+def _find_sheet_with_column(wb, column):
+    # the link-up sheet is named after whatever action produced it, so it is located by
+    # the column it carries rather than by name
+    for name in wb.sheetnames:
+        sheet = wb[name]
+        for row in sheet.iter_rows(values_only=True, max_row=1):
+            if column in row:
+                return sheet
+    return None
+
+def _sheet_records(wb, sheet_name, consequence):
+    # a capture missing one sheet still has good data in the others, so drop just that
+    # section rather than the whole file — but say which chart goes dark because of it
+    sheet = _find_sheet(wb, sheet_name, required=False)
+    if sheet is None:
+        print(f"  Warning: no '*{sheet_name}' sheet; {consequence}.")
+        return None
+    return _read_sheet(sheet)
+
 def _read_sheet(sheet):
     rows = []
     for row in sheet.iter_rows(values_only=True):
@@ -121,6 +140,18 @@ def collect_ber_from_vdm(module_records):
 
     return _lanes_to_records(lanes)
 
+def collect_tcode(fec_records):
+    # only some switches have this measured; a None here means "not measured" and must
+    # not become a 0 — that would report a switch as passing a spec it never ran
+    return _lanes_to_records(_group_by_lane(fec_records, "tcode2"))
+
+def collect_uncorrected_cw(fec_records):
+    return _lanes_to_records(_group_by_lane(fec_records, "UNCORR_CW"))
+
+def collect_link_up(reset_records):
+    # seconds from admin-up to link-up, per lane
+    return _lanes_to_records(_group_by_lane(reset_records, "LinkUpTime"))
+
 def _parse_time(value):
     if value is None:
         return None
@@ -171,8 +202,8 @@ def collect_temps(module_records, timestamps):
         modules[module_key].append([round(hours, 4), temp])
 
     if unmatched:
-        print(f"Info: {unmatched} module temperature reading(s) had no matching log "
-              f"timestamp and were dropped.")
+        print(f"  Info: {unmatched} module temperature reading(s) had no "
+              f"matching log timestamp and were dropped.")
 
     temp_data = []
     for module_key in modules:
@@ -209,8 +240,8 @@ def collect_sensors(sensor_records, timestamps):
         switches[switch].append([round(hours, 4), float(value)])
 
     if unmatched:
-        print(f"Info: {unmatched} sensor reading(s) had no matching log timestamp "
-              f"and were dropped.")
+        print(f"  Info: {unmatched} sensor reading(s) had no matching log "
+              f"timestamp and were dropped.")
 
     sensor_data = []
     for switch in switches:
@@ -254,13 +285,34 @@ def collect_meta_data(log_records, module_records, test_type):
             start_time = str(record["test_start_time"])
             break
 
-    temp_min = None
-    temp_max = None
+    # the spec rides on every module row. A mixed rack can disagree — 70C and 75C optics
+    # are both common — and the chart draws a single limit line, so a conflict has to be
+    # said out loud rather than resolved by whichever row happened to come first.
+    mins = []
+    maxes = []
     for record in module_records:
-        if temp_min is None:
-            temp_min = _parse_temp(record["MinModuleTemperature"])
-        if temp_max is None:
-            temp_max = _parse_temp(record["MaxModuleTemperature"])
+        low = _parse_temp(record["MinModuleTemperature"])
+        if low is not None and low not in mins:
+            mins.append(low)
+        high = _parse_temp(record["MaxModuleTemperature"])
+        if high is not None and high not in maxes:
+            maxes.append(high)
+
+    if len(mins) > 1:
+        print(f"  Warning: modules disagree on MinModuleTemperature {sorted(mins)}; "
+              f"keeping {mins[0]}. The spec should probably be per switch.")
+    if len(maxes) > 1:
+        print(f"  Warning: modules disagree on MaxModuleTemperature {sorted(maxes)}; "
+              f"keeping {maxes[0]}. The spec should probably be per switch.")
+
+    if mins:
+        temp_min = mins[0]
+    else:
+        temp_min = None
+    if maxes:
+        temp_max = maxes[0]
+    else:
+        temp_max = None
 
     return {
         "test_type": test_type,
@@ -270,51 +322,105 @@ def collect_meta_data(log_records, module_records, test_type):
     }
 
 
+def _detect_test_type(wb):
+    # a reset capture records the reset step it performed; soak has no such sheet
+    if _find_sheet(wb, "module_reset", required=False) is None:
+        return "soak"
+    return "reset"
+
+def _collect_fec_metrics(wb, module_records):
+    """BER, plus the two metrics only the switch ASIC's counter carries.
+
+    The ASIC counter and the optic's own VDM reading are different instruments and must
+    never be pooled, so which one was used travels with the data. T-Code and uncorrected
+    codewords exist only on the counter, so a capture that falls back to VDM has neither.
+    """
+    fec_sheet = _find_sheet(wb, "get_fec_counter", required=False)
+    if fec_sheet is not None:
+        print("  Info: BER read from the switch ASIC's '*get_fec_counter'.")
+        fec_records = _read_sheet(fec_sheet)
+        return (collect_pre_fec_ber(fec_records), "fec_counter",
+                collect_tcode(fec_records), collect_uncorrected_cw(fec_records))
+    if module_records is not None:
+        print("  Info: no '*get_fec_counter' sheet; using the module's own VDM "
+              "Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.")
+        return collect_ber_from_vdm(module_records), "vdm", None, None
+    return None, None, None, None
+
+def _collect_link_up_metrics(wb):
+    # named after whichever action produced it, so found by its column
+    sheet = _find_sheet_with_column(wb, "LinkUpTime")
+    if sheet is None:
+        print("  Info: no sheet carries a 'LinkUpTime' column; link-up times are "
+              "unavailable.")
+        return None
+    return collect_link_up(_read_sheet(sheet))
+
+def _report_sections(test_type, measurements):
+    counts = []
+    for section in ("flaps", "ber", "tcode", "uncorrected_cw", "link_up",
+                    "temps", "sensors"):
+        value = measurements[section]
+        if value is None:
+            counts.append(f"{section} --")
+        else:
+            counts.append(f"{section} {len(value)}")
+    print(f"  {test_type} capture | " + " | ".join(counts))
+
 def data_to_yml(data, yml_file):
     wb = load_workbook(data)
+    print(f"{Path(data).name}")
 
-    log_sheet = _find_sheet(wb, "log") # meta (device model, IP, start time)
-    flap_sheet = _find_sheet(wb, "get_link_flap") # bargraph 
-    module_sheet = _find_sheet(wb, "get_module_info") # box_plot + dot_plot (VDM Fallback), temps, spec_max
-    sensor_sheet = _find_sheet(wb, "get_switch_sensor")
-    fec_sheet = _find_sheet(wb, "get_fec_counter", required=False) # box_plot + dot_plot (ASIC BER)
+    test_type = _detect_test_type(wb)
 
-    log_records = _read_sheet(log_sheet)
-    timestamps = _log_timestamps(log_records)
-    flap_records = _read_sheet(flap_sheet)
-    module_records = _read_sheet(module_sheet)
-    sensor_records = _read_sheet(sensor_sheet)
+    log_records = _sheet_records(wb, "log",
+        "measurements have no timeline, so temperatures will be dropped")
+    flap_records = _sheet_records(wb, "get_link_flap",
+        "the link flap chart will have no data")
+    module_records = _sheet_records(wb, "get_module_info",
+        "temperatures and the spec limits will be missing")
+    sensor_records = _sheet_records(wb, "get_switch_sensor",
+        "the board sensor line will be omitted")
 
-    # reset by default has 1 Down->Up, soak does not
-    if _find_sheet(wb, "module_reset", required=False) is None:
-        test_type = "soak"
-    else:
-        test_type = "reset"
+    timestamps = _log_timestamps(log_records or [])
+    ber, ber_source, tcode, uncorrected_cw = _collect_fec_metrics(wb, module_records)
+    link_up = _collect_link_up_metrics(wb)
 
-    # reset captures have no FEC sheet so fallback to the module's own VDM reading
-    if fec_sheet is None:
-        ber = collect_ber_from_vdm(module_records) # reset_dut, reset_ref
-        ber_source = "vdm"
-    else:
-        ber = collect_pre_fec_ber(_read_sheet(fec_sheet)) # soak only
-        ber_source = "fec_counter"
-
-    # the ASIC counter and the optic's own reading are different instruments and must
-    # never be pooled, so the chart has to be able to say which one it is showing
-    meta = collect_meta_data(log_records, module_records, test_type)
+    meta = collect_meta_data(log_records or [], module_records or [], test_type)
     meta["ber_source"] = ber_source
+
+    # a section is null when its sheet was absent — "could not look", which is a
+    # different fact from an empty list meaning "looked, found nothing"
+    if flap_records is None:
+        flaps = None
+    else:
+        flaps = collect_link_flaps(flap_records, test_type)
+
+    if module_records is None or not timestamps:
+        temps = None
+    else:
+        temps = collect_temps(module_records, timestamps)
+
+    if sensor_records is None or not timestamps:
+        sensors = None
+    else:
+        sensors = collect_sensors(sensor_records, timestamps)
 
     measurements = {
         "meta": meta,
-        "flaps": collect_link_flaps(flap_records, test_type),
+        "flaps": flaps,
         "ber": ber,
-        "temps": collect_temps(module_records, timestamps),
-        "sensors": collect_sensors(sensor_records, timestamps),
+        "tcode": tcode,
+        "uncorrected_cw": uncorrected_cw,
+        "link_up": link_up,
+        "temps": temps,
+        "sensors": sensors,
     }
 
     with open(yml_file, "w") as f:
         yaml.dump(measurements, f, default_flow_style=False, sort_keys=False)
 
+    _report_sections(test_type, measurements)
     return measurements
 
 

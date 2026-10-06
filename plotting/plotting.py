@@ -154,8 +154,12 @@ class Plots:
         return series
 
     def _segments(self, x, y):
+        # a NaN marks a gap where nothing was measured, so no segment spans it
         segments = []
         for i in range(len(x) - 1):
+            pair = (x[i], y[i], x[i + 1], y[i + 1])
+            if any(v != v for v in pair):
+                continue
             segments.append([(x[i], y[i]), (x[i + 1], y[i + 1])])
         return segments
 
@@ -184,8 +188,23 @@ class Plots:
             segments = self._segments(timestamps, values)
             if segments:
                 line = LineCollection(segments, cmap=self.style["VALUE_CMAP"], norm=norm)
-                line.set_array(values[:-1])
+                colors = []
+                for segment in segments:
+                    colors.append(segment[0][1])
+                line.set_array(colors)
                 axes.add_collection(line)
+                continue
+            # isolated samples have no segment to colour — a lone reading, or each half
+            # of a merged capture holding one. Show them rather than drawing nothing.
+            points_x = []
+            points_y = []
+            for i in range(len(timestamps)):
+                if timestamps[i] == timestamps[i] and values[i] == values[i]:
+                    points_x.append(timestamps[i])
+                    points_y.append(values[i])
+            if points_x:
+                axes.scatter(points_x, points_y, c=points_y,
+                             cmap=self.style["VALUE_CMAP"], norm=norm, s=18)
         axes.relim()
         axes.autoscale_view()
 

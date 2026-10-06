@@ -1,10 +1,15 @@
 from plotting import Plots
-from plotting_runner import output_path
+from plotting_runner import OUTPUT_DIR
 
-OUT_PATH = output_path("test_box_plot.png")
-BARGRAPH_OUT_PATH = output_path("test_bargraph.png")
-DOT_PLOT_OUT_PATH = output_path("test_dot_plot.png")
-TIME_SERIES_OUT_PATH = output_path("test_temp_time_series.png")
+# its own directory: output/ is what the deck builds from, and a synthetic chart sitting
+# there is indistinguishable from one rendered off a real capture
+TEST_OUTPUT_DIR = OUTPUT_DIR / "test"
+TEST_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+OUT_PATH = TEST_OUTPUT_DIR / "test_box_plot.png"
+BARGRAPH_OUT_PATH = TEST_OUTPUT_DIR / "test_bargraph.png"
+DOT_PLOT_OUT_PATH = TEST_OUTPUT_DIR / "test_dot_plot.png"
+TIME_SERIES_OUT_PATH = TEST_OUTPUT_DIR / "test_temp_time_series.png"
 
 data = {
     0: [1.0, 1.2, 1.1, 1.4, 2.9],
