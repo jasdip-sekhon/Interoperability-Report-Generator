@@ -98,6 +98,19 @@ class Plots:
         if not colors:
             colors = [self.style["DEFAULT_COLOR"]] * len(keys)
         axes.bar(x, heights, color=colors)
+
+        # a zero-height bar draws nothing, which looks exactly like the gap left by a
+        # key that was never measured. Mark the measured zeros so "counted, none found"
+        # stays distinguishable from "no data".
+        zero_x = []
+        for i in range(len(heights)):
+            if heights[i] == 0:
+                zero_x.append(i + 1)
+        if zero_x:
+            axes.scatter(zero_x, [0] * len(zero_x), marker="_", s=260, linewidths=2.5,
+                         color=self.style["DEFAULT_COLOR"], zorder=3)
+        axes.set_ylim(bottom=0)
+
         self._set_category_ticks(axes, labels)
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)
         return self._finish(figure, out_path)

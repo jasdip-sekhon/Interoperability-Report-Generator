@@ -187,12 +187,26 @@ mixed = [
 ]
 log = [{"TreeL1": 0, "device_model": "AZ9074", "device_ip": "10.0.0.1",
         "test_start_time": "2026-08-16 03:25:12"}]
-print("    (expect a MaxModuleTemperature warning on the next line)")
 meta = collect_meta_data(log, mixed, "soak")
-assert meta["spec"]["temp_max"] == 70.0, "first value kept"
-assert meta["spec"]["temp_min"] == 0.0
+# a rack can mix 70C and 75C optics; one global spec would put the wrong line on one
+# of these two charts
+assert meta["switches"]["0"]["temp_max"] == 70.0
+assert meta["switches"]["4-33"]["temp_max"] == 75.0, \
+    "each switch keeps its own rating rather than inheriting the first one seen"
+assert meta["switches"]["0"]["temp_min"] == 0.0
 assert meta["switches"]["0"]["device_model"] == "AZ9074"
-print("ok  collect_meta_data: conflicting specs warn instead of silently picking one")
+assert "spec" not in meta, "no global spec to disagree with the per-switch ones"
+print("ok  collect_meta_data: temperature spec is per switch, not per capture")
+
+# modules on ONE switch disagreeing is still a problem - one chart, one line
+print("    (expect a single-switch rating warning on the next line)")
+within = [
+    {"TreeL1": 0, "MinModuleTemperature": "0 C", "MaxModuleTemperature": "70 C"},
+    {"TreeL1": 0, "MinModuleTemperature": "0 C", "MaxModuleTemperature": "75 C"},
+]
+meta = collect_meta_data(log, within, "soak")
+assert meta["switches"]["0"]["temp_max"] == 70.0, "first value kept"
+print("ok  collect_meta_data: modules disagreeing within one switch still warn")
 
 print()
 print("all tests passed")

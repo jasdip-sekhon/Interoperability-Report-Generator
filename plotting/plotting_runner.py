@@ -7,30 +7,68 @@ PROJECT_ROOT = Path(__file__).parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "output"
 INTERCONNECTS_YML = PROJECT_ROOT / "interconnects" / "interconnects.yml"
 MEASUREMENTS_DIR = PROJECT_ROOT / "data" / "output"
+MANIFEST_NAME = "manifest.yml"
 # a bit error rate of 0.5 means half the bits are wrong, which is noise rather than a
 # degraded link; readings at or above it are the counter saturating
 SATURATED_BER = 0.5
 
 plots = Plots()
 
+CHART_KINDS = {"box": plots.box_plot, "dot": plots.dot_plot}
 
-def ensure_output_dir():
-    OUTPUT_DIR.mkdir(exist_ok=True)
+# Every chart drawn against the interconnect axis, declared rather than hand-written.
+# Adding a metric is a row here; the loop below needs no change, and neither does
+# anything downstream that wants to know which charts a run produces.
+#   section          the measurement yaml key, null when the capture lacks it
+#   stem + kind      the file name, e.g. pre_fec_ber_box.png
+#   title            formatted against meta, so it can name the instrument used
+INTERCONNECT_CHARTS = (
+    {"section": "ber",
+     "stem": "pre_fec_ber",
+     "title": "Pre-FEC BER by interconnect ({ber_source})",
+     "ylabel": "Pre-FEC BER",
+     "metric": "BER",
+     "kinds": ("box", "dot"),
+     "drop_at_or_above": SATURATED_BER},
+    {"section": "tcode",
+     "stem": "tcode",
+     "title": "T-Code by interconnect",
+     "ylabel": "T-Code",
+     "metric": "T-Code",
+     "kinds": ("dot",)},
+    {"section": "uncorrected_cw",
+     "stem": "uncorrected_cw",
+     "title": "Uncorrected codewords by interconnect",
+     "ylabel": "Uncorrected codewords",
+     "metric": "uncorrected codeword",
+     "kinds": ("dot",)},
+    {"section": "link_up",
+     "stem": "link_up",
+     "title": "Link-up time by interconnect",
+     "ylabel": "Seconds",
+     "metric": "link-up",
+     "kinds": ("dot",)},
+)
 
-def clear_output_dir():
+
+def ensure_output_dir(out_dir=OUTPUT_DIR):
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+def clear_output_dir(out_dir=OUTPUT_DIR):
     # a chart left over from an earlier run is indistinguishable from a fresh one, and
     # the deck builder reads whatever is in here
-    ensure_output_dir()
+    out_dir = Path(out_dir)
+    ensure_output_dir(out_dir)
     removed = 0
-    for path in OUTPUT_DIR.glob("*.png"):
+    for path in out_dir.glob("*.png"):
         path.unlink()
         removed = removed + 1
     if removed:
-        print(f"  Cleared {removed} chart(s) from {OUTPUT_DIR.name}/")
+        print(f"  Cleared {removed} chart(s) from {out_dir.name}/")
 
-def output_path(filename):
-    ensure_output_dir()
-    return OUTPUT_DIR / filename
+def output_path(filename, out_dir=OUTPUT_DIR):
+    ensure_output_dir(out_dir)
+    return Path(out_dir) / filename
 
 def load_yaml(path):
     with open(path) as f:
@@ -165,62 +203,31 @@ def _report_unmatched(keys, values, what):
               f"measurement; they will render as gaps.")
 
 
-def generate_plots(measurements_yml):
-    measurements = load_yaml(measurements_yml)
-    interconnects = load_yaml(INTERCONNECTS_YML)
-    meta = measurements["meta"]
-    print(f"{Path(measurements_yml).name} ({meta['test_type']}, BER from "
-          f"{meta['ber_source']})")
-    clear_output_dir()
+def _draw_interconnect_charts(measurements, meta, keys, labels, out_dir):
+    """Every chart whose x axis is the interconnect list. Returns manifest entries."""
+    drawn = []
+    for spec in INTERCONNECT_CHARTS:
+        records = measurements[spec["section"]]
+        if records is None:
+            continue
+        values = _lane_values(records, spec.get("drop_at_or_above"))
+        _report_unmatched(keys, values, spec["metric"])
+        title = spec["title"].format(**meta)
+        for kind in spec["kinds"]:
+            name = f"{spec['stem']}_{kind}.png"
+            CHART_KINDS[kind](values, keys, labels, title=title, ylabel=spec["ylabel"],
+                              out_path=output_path(name, out_dir))
+            drawn.append({"file": name, "title": title, "scope": "all"})
+    return drawn
 
-    interconnect_keys, interconnect_labels = build_interconnect_x_axis(interconnects)
-    switch_keys, switch_labels = build_switch_x_axis(interconnects)
-    spec = meta["spec"]
 
-    if measurements["flaps"] is not None:
-        plots.bargraph(_flaps_per_switch(measurements["flaps"]),
-                       switch_keys, switch_labels,
-                       title="Link flaps by switch", ylabel="Flaps",
-                       out_path=output_path("flaps.png"))
+def _draw_temperature_charts(measurements, meta, switch_keys, seams, out_dir):
+    """One chart per switch: its ports are the lines, its board sensor an extra one.
 
-    if measurements["ber"] is not None:
-        ber = _lane_values(measurements["ber"], drop_at_or_above=SATURATED_BER)
-        _report_unmatched(interconnect_keys, ber, "BER")
-        title = f"Pre-FEC BER by interconnect ({meta['ber_source']})"
-        plots.box_plot(ber, interconnect_keys, interconnect_labels,
-                       title=title, ylabel="Pre-FEC BER",
-                       out_path=output_path("pre_fec_ber_box.png"))
-        plots.dot_plot(ber, interconnect_keys, interconnect_labels,
-                       title=title, ylabel="Pre-FEC BER",
-                       out_path=output_path("pre_fec_ber_dot.png"))
-
-    if measurements["tcode"] is not None:
-        tcode = _lane_values(measurements["tcode"])
-        _report_unmatched(interconnect_keys, tcode, "T-Code")
-        plots.dot_plot(tcode, interconnect_keys, interconnect_labels,
-                       title="T-Code by interconnect", ylabel="T-Code",
-                       out_path=output_path("tcode_dot.png"))
-
-    if measurements["uncorrected_cw"] is not None:
-        plots.dot_plot(_lane_values(measurements["uncorrected_cw"]),
-                       interconnect_keys, interconnect_labels,
-                       title="Uncorrected codewords by interconnect",
-                       ylabel="Uncorrected codewords",
-                       out_path=output_path("uncorrected_cw_dot.png"))
-
-    if measurements["link_up"] is not None:
-        plots.dot_plot(_lane_values(measurements["link_up"]),
-                       interconnect_keys, interconnect_labels,
-                       title="Link-up time by interconnect", ylabel="Seconds",
-                       out_path=output_path("link_up_dot.png"))
-
-    # one temperature chart per switch: the lines are that switch's ports, and the
-    # board sensor is a single extra line, so the switches cannot share an axis
-    seams = meta.get("seams") or []
-    if seams:
-        print(f"  Info: merged capture; lines break at {len(seams)} run boundary "
-              f"({', '.join(f'{s:.1f}h' for s in seams)}) where nothing was measured.")
-
+    Switches cannot share an axis here - each has its own ports, its own sensor, and
+    its own optics rating for the limit line. Returns manifest entries.
+    """
+    drawn = []
     for switch in switch_keys:
         temps = _temps_per_port(measurements["temps"], switch, seams)
         if not temps:
@@ -230,7 +237,7 @@ def generate_plots(measurements_yml):
         # the chart degrades to scattered points, which is worth saying out loud
         longest = 0
         for port in temps:
-            real = [p for p in temps[port] if p[0] == p[0]]
+            real = [point for point in temps[port] if point[0] == point[0]]
             if len(real) > longest:
                 longest = len(real)
         if longest < 2:
@@ -241,15 +248,75 @@ def generate_plots(measurements_yml):
         labels = []
         for port in ports:
             labels.append(f"port {port}")
-        model = (meta["switches"].get(switch) or {}).get("device_model") or "unknown"
+        info = meta["switches"].get(switch) or {}
+        model = info.get("device_model") or "unknown"
+        name = f"temp_switch_{switch}.png"
+        title = f"Module temperature over time — switch {switch} ({model})"
         plots.temp_time_series(temps, ports, labels,
-                               title=f"Module temperature over time — switch {switch} ({model})",
+                               title=title,
                                ylabel="Temperature (°C)",
                                xlabel="Elapsed time (hours)",
-                               out_path=output_path(f"temp_switch_{switch}.png"),
-                               spec_min=spec["temp_min"], spec_max=spec["temp_max"],
+                               out_path=output_path(name, out_dir),
+                               spec_min=info.get("temp_min"),
+                               spec_max=info.get("temp_max"),
                                sensor_points=_sensor_points(measurements["sensors"],
                                                             switch, seams))
+        drawn.append({"file": name, "title": title, "scope": switch})
+    return drawn
+
+
+def _write_manifest(measurements_yml, meta, charts, out_dir):
+    """Declare what was drawn, in the order it should be presented.
+
+    The deck builder reads this instead of the file names, so it needs no knowledge of
+    which metrics exist or how switches are named. Adding a chart type changes what
+    appears in the deck without touching the deck code.
+    """
+    manifest = {
+        "capture": Path(measurements_yml).name,
+        "test_type": meta["test_type"],
+        "ber_source": meta["ber_source"],
+        "charts": charts,
+    }
+    path = Path(out_dir) / MANIFEST_NAME
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(manifest, f, default_flow_style=False, sort_keys=False,
+                  allow_unicode=True)
+    print(f"  Wrote {len(charts)} chart(s) and {path.name}")
+    return path
+
+
+def generate_plots(measurements_yml, out_dir=OUTPUT_DIR):
+    measurements = load_yaml(measurements_yml)
+    interconnects = load_yaml(INTERCONNECTS_YML)
+    meta = measurements["meta"]
+    print(f"{Path(measurements_yml).name} ({meta['test_type']}, BER from "
+          f"{meta['ber_source']})")
+    clear_output_dir(out_dir)
+
+    interconnect_keys, interconnect_labels = build_interconnect_x_axis(interconnects)
+    switch_keys, switch_labels = build_switch_x_axis(interconnects)
+
+    charts = []
+    if measurements["flaps"] is not None:
+        title = "Link flaps by switch"
+        plots.bargraph(_flaps_per_switch(measurements["flaps"]),
+                       switch_keys, switch_labels,
+                       title=title, ylabel="Flaps",
+                       out_path=output_path("flaps.png", out_dir))
+        charts.append({"file": "flaps.png", "title": title, "scope": "all"})
+
+    charts.extend(_draw_interconnect_charts(measurements, meta, interconnect_keys,
+                                            interconnect_labels, out_dir))
+
+    seams = meta.get("seams") or []
+    if seams:
+        print(f"  Info: merged capture; lines break at {len(seams)} run boundary "
+              f"({', '.join(f'{s:.1f}h' for s in seams)}) where nothing was measured.")
+    charts.extend(_draw_temperature_charts(measurements, meta, switch_keys,
+                                           seams, out_dir))
+
+    return _write_manifest(measurements_yml, meta, charts, out_dir)
 
 
 if __name__ == "__main__":

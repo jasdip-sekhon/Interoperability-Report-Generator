@@ -1,0 +1,19 @@
+# What one report covers. Captures are listed rather than discovered, because which
+# files pair is not something a filename can be trusted to say: a reset testcase is
+# captured twice, DUT-run and Ref-run, and neither half is authoritative on its own.
+#
+# One capture under a testcase is used as-is. Two or more are merged first.
+
+report: R12-TB1
+
+topology: references/interconnects_sample.xlsx
+
+testcases:
+  - name: Soak
+    captures:
+      - references/soak_sample.xlsx
+
+  - name: Reset
+    captures:
+      - references/reset_dut_sample.xlsx
+      - references/reset_ref_sample.xlsx

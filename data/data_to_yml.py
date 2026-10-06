@@ -285,40 +285,41 @@ def collect_meta_data(log_records, module_records, test_type):
             start_time = str(record["test_start_time"])
             break
 
-    # the spec rides on every module row. A mixed rack can disagree — 70C and 75C optics
-    # are both common — and the chart draws a single limit line, so a conflict has to be
-    # said out loud rather than resolved by whichever row happened to come first.
-    mins = []
-    maxes = []
+    # the spec rides on every module row, and a rack can mix optics with different
+    # ratings (70C and 75C are both common). Each temperature chart covers one switch
+    # and draws one limit line, so the spec belongs to the switch, not the capture.
+    seen = {}
     for record in module_records:
-        low = _parse_temp(record["MinModuleTemperature"])
-        if low is not None and low not in mins:
-            mins.append(low)
-        high = _parse_temp(record["MaxModuleTemperature"])
-        if high is not None and high not in maxes:
-            maxes.append(high)
+        switch = _norm_switch(record["TreeL1"])
+        if switch is None:
+            continue
+        if switch not in switches:
+            switches[switch] = {"device_model": None, "device_ip": None}
+        if switch not in seen:
+            seen[switch] = {"temp_min": [], "temp_max": []}
+        for field, column in (("temp_min", "MinModuleTemperature"),
+                              ("temp_max", "MaxModuleTemperature")):
+            value = _parse_temp(record[column])
+            if value is not None and value not in seen[switch][field]:
+                seen[switch][field].append(value)
 
-    if len(mins) > 1:
-        print(f"  Warning: modules disagree on MinModuleTemperature {sorted(mins)}; "
-              f"keeping {mins[0]}. The spec should probably be per switch.")
-    if len(maxes) > 1:
-        print(f"  Warning: modules disagree on MaxModuleTemperature {sorted(maxes)}; "
-              f"keeping {maxes[0]}. The spec should probably be per switch.")
-
-    if mins:
-        temp_min = mins[0]
-    else:
-        temp_min = None
-    if maxes:
-        temp_max = maxes[0]
-    else:
-        temp_max = None
+    for switch in seen:
+        for field in ("temp_min", "temp_max"):
+            values = seen[switch][field]
+            # modules on one switch disagreeing is a narrower problem than a mixed rack,
+            # but it still means one line cannot represent them all
+            if len(values) > 1:
+                print(f"  Warning: switch {switch} has modules rated {sorted(values)} "
+                      f"for {field}; keeping {values[0]}.")
+            if values:
+                switches[switch][field] = values[0]
+            else:
+                switches[switch][field] = None
 
     return {
         "test_type": test_type,
         "start_time": start_time,
         "switches": switches,
-        "spec": {"temp_min": temp_min, "temp_max": temp_max},
     }
 
 
@@ -368,7 +369,9 @@ def _report_sections(test_type, measurements):
     print(f"  {test_type} capture | " + " | ".join(counts))
 
 def data_to_yml(data, yml_file):
-    wb = load_workbook(data)
+    # read_only streams the sheets instead of building the whole workbook in memory;
+    # on a real 361MB soak that is the difference between seconds and half an hour
+    wb = load_workbook(data, read_only=True)
     print(f"{Path(data).name}")
 
     test_type = _detect_test_type(wb)
