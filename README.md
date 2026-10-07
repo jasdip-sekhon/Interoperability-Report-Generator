@@ -30,6 +30,11 @@ references/              redacted sample captures used as fixtures
 `plotting.py` knows nothing about switches or interconnects — it takes `data`, `keys`,
 `labels` and draws. Everything domain-specific lives in `plotting_runner.py`.
 
+That boundary is enforced, not just intended: `test_library_is_generic.py` fails if
+`plotting.py` imports anything from this project or so much as names a switch, a lane or
+a BER. It is meant to be liftable into another project along with `plotting_style.yaml`,
+which is why a chart method is called `value_series` rather than `temp_time_series`.
+
 Rendering and deck building are joined by a folder of PNGs, not a function call, so charts
 can be inspected without building a deck and the deck can be rebuilt without re-rendering.
 
@@ -89,9 +94,10 @@ reason rather than being silently thin.
 ```bash
 python data/test_data_to_yml.py        # parsers, against synthetic records
 python data/test_merge_runs.py         # the per-field merge rules
-python plotting/test_plotting_runner.py  # the topology/measurement join
-python plotting/test_plotting.py       # renders one of each chart type to output/test/
-python deck/test_build_deck.py         # slide layout and manifest handling
+python plotting/test_plotting_runner.py     # the topology/measurement join
+python plotting/test_plotting.py            # renders one of each chart type
+python plotting/test_library_is_generic.py  # plotting.py stays domain-free
+python deck/test_build_deck.py              # slide layout and manifest handling
 ```
 
 The fixtures hold one reading per lane, so the grouping, merging and seam logic are

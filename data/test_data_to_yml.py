@@ -51,7 +51,7 @@ flaps = collect_link_flaps([
     lane_row(0, 1, 1, "Down->Up", 0),
     lane_row(0, 1, 1, "Down->Up", 1),
     lane_row(0, 1, 1, "Down->Up", 2),
-], test_type="reset")
+], recovery_commanded=True)
 assert len(flaps) == 1
 assert flaps[0]["count"] == 1, f"max(0, raw-1) over [0,1,2] is 1, got {flaps[0]['count']}"
 print("ok  flap correction: raw [0,1,2] -> count 1")
@@ -62,14 +62,14 @@ print("ok  flap correction: raw [0,1,2] -> count 1")
 stuck = collect_link_flaps([
     lane_row(0, 1, 1, "Down->Up", 0),
     lane_row(0, 1, 1, "Down->Up", 0),
-], test_type="reset")
+], recovery_commanded=True)
 assert stuck[0]["never_recovered"] is True
 assert stuck[0]["count"] == 0
 
 healthy = collect_link_flaps([
     lane_row(0, 1, 1, "Down->Up", 0),
     lane_row(0, 1, 1, "Down->Up", 1),
-], test_type="reset")
+], recovery_commanded=True)
 assert healthy[0]["never_recovered"] is False
 # both correct to count 0 - without the raw check they would be indistinguishable
 assert healthy[0]["count"] == 0
@@ -78,9 +78,12 @@ print("ok  never_recovered: raw [0,0] -> True, raw [0,1] -> False, both count 0"
 
 # --- soak commands no recovery, so the question does not apply ------------------
 
-soak = collect_link_flaps([lane_row(0, 1, 1, "Down->Up", 0)], test_type="soak")
-assert soak[0]["never_recovered"] is None, "soak should report null, not true"
-print("ok  soak: never_recovered is null, not a false alarm")
+# a soak commands nothing down, and a lane test commands exactly one lane - in both,
+# a lane reading raw 0 was never asked to recover
+untouched = collect_link_flaps([lane_row(0, 1, 1, "Down->Up", 0)])
+assert untouched[0]["never_recovered"] is None,     "a lane nobody knocked down cannot have failed to come back"
+assert untouched[0]["count"] == 0, "the flap count is still real"
+print("ok  never_recovered is null unless a recovery was actually commanded")
 
 
 # --- switch ids arrive as int, float or str in the same column ------------------

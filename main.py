@@ -44,20 +44,54 @@ def _resolve(path):
     return PROJECT_ROOT / path
 
 
-def prepare_measurements(testcase):
-    """Convert this testcase's captures, merging them when there is more than one."""
-    converted = []
+def _test_type(testcase):
+    """What this capture is, taken from the config rather than guessed from its sheets.
+
+    It matters beyond the label: only a soak commands no link recovery, so only a soak
+    suppresses never_recovered. A reset, a shut/no-shut and the lane tests all command
+    one, and sheet-based detection calls every non-reset capture a soak - which would
+    throw that signal away for three of the five testcases.
+    """
+    return _slug(testcase["name"])
+
+
+def _capture_entries(testcase):
+    """[(label, path)] for this testcase. A bare path has no label."""
+    entries = []
     for capture in testcase["captures"]:
+        if isinstance(capture, dict):
+            entries.append((capture.get("label"), capture["file"]))
+        else:
+            entries.append((None, capture))
+    return entries
+
+
+def prepare_measurements(testcase):
+    """Convert each capture of this testcase. Returns [(label, measurement yaml)].
+
+    Each run is charted on its own rather than merged. A reset-DUT run resets the DUT's
+    modules and a reset-Ref run resets the other side's, so the two measured different
+    hardware - merging them would put a seam through every time series and hide which
+    run saw a given flap.
+
+    The merged view is still written, because the union is what an analysis stage needs:
+    picking one file per switch is what hid 68 failing lanes on the real data.
+    """
+    converted = []
+    for label, capture in _capture_entries(testcase):
         source = _resolve(capture)
         target = MEASUREMENTS_DIR / (source.stem + ".yml")
-        data_to_yml(source, target)
-        converted.append(target)
+        data_to_yml(source, target, _test_type(testcase),
+                    testcase.get("recovery_commanded", False))
+        converted.append((label, target))
 
-    if len(converted) == 1:
-        return converted[0]
-    merged = MEASUREMENTS_DIR / f"{_slug(testcase['name'])}_merged.yml"
-    merge_runs(converted, merged)
-    return merged
+    if len(converted) > 1:
+        merged = MEASUREMENTS_DIR / f"{_slug(testcase['name'])}_merged.yml"
+        paths = []
+        for _, path in converted:
+            paths.append(path)
+        merge_runs(paths, merged)
+    return converted
 
 
 def run(config_path):
@@ -65,15 +99,27 @@ def run(config_path):
     report = config.get("report", "Report")
     MEASUREMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    print(f"== topology ==")
-    interconnects_to_yml(_resolve(config["topology"]), INTERCONNECTS_YML)
+    # a rack without a topology in the format we read still charts, just with plainer
+    # x-axis labels taken from the measurements
+    topology = config.get("topology")
+    if topology:
+        print("== topology ==")
+        interconnects_to_yml(_resolve(topology), INTERCONNECTS_YML)
+        interconnects_yml = INTERCONNECTS_YML
+    else:
+        print("== topology == none configured; x axis comes from the measurements")
+        interconnects_yml = None
 
     manifests = []
     for testcase in config["testcases"]:
         print(f"== {testcase['name']} ==")
-        measurements = prepare_measurements(testcase)
-        charts_dir = OUTPUT_DIR / _slug(testcase["name"])
-        manifests.append(generate_plots(measurements, charts_dir))
+        for label, measurements in prepare_measurements(testcase):
+            name = testcase["name"]
+            if label:
+                name = f"{name} {label}"
+            charts_dir = OUTPUT_DIR / _slug(name)
+            manifests.append(generate_plots(measurements, charts_dir,
+                                            interconnects_yml, name))
 
     print("== deck ==")
     deck_path = OUTPUT_DIR / f"{_slug(report)}.pptx"

@@ -1,6 +1,8 @@
 DPI: 150
 
-ENTRY_WIDTH_IN: 0.35
+# charts are made for slides: a 64-entry page lands near the 12.6in a slide
+# gives it, so labels are not shrunk into a smear on the way in
+ENTRY_WIDTH_IN: 0.18
 MIN_FIG_WIDTH_IN: 8.0
 MIN_FIG_HEIGHT_IN: 6.0
 HEIGHT_PER_LABEL_CHAR_IN: 0.045   # 90° labels need vertical room

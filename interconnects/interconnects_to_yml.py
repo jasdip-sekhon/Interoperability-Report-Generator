@@ -2,9 +2,20 @@ from pathlib import Path
 from openpyxl import load_workbook
 import yaml
 
+LOOKUP_SHEET = "Chart label lookup"
+
+def _lookup_sheet(wb):
+    # a real topology workbook carries cables, lane links and a link matrix alongside
+    # the lookup, and the active sheet is whichever was open when it was saved - so the
+    # sheet has to be named, not guessed
+    if LOOKUP_SHEET in wb.sheetnames:
+        return wb[LOOKUP_SHEET]
+    raise ValueError(f"no '{LOOKUP_SHEET}' sheet in this workbook; "
+                     f"found {wb.sheetnames}")
+
 def interconnects_to_yml(interconnects_file, output_yml):
-    wb = load_workbook(interconnects_file)
-    worksheet = wb.active
+    wb = load_workbook(interconnects_file, read_only=True)
+    worksheet = _lookup_sheet(wb)
 
     rows = list(worksheet.iter_rows(values_only=True))
     if not rows:

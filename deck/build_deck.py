@@ -24,14 +24,17 @@ SLIDE_HEIGHT = 7.5
 # borrowed from the hand-built decks so the generated ones sit at the same measurements
 HEADING = (0.35, 0.20, 12.6, 0.42)
 RULE = (0.20, 0.82, 12.9, 0.03)
-FOOTNOTE = (0.45, 6.35, 12.3, 0.35)
 
 # a cell is (x, caption y, picture y, width, height); a picture is fitted inside it.
-# One chart gets the whole slide rather than a lonely quarter of it.
 GRID_CELLS = ((0.35, 0.97, 1.24, 5.9, 2.25), (6.85, 0.97, 1.24, 5.9, 2.25),
               (0.35, 3.71, 3.98, 5.9, 2.25), (6.85, 3.71, 3.98, 5.9, 2.25))
+# one chart gets the whole slide rather than a lonely quarter of it
 SINGLE_CELL = ((0.35, 0.97, 1.30, 12.6, 4.90),)
 PER_SLIDE = len(GRID_CELLS)
+# a chart with a long category axis is nearly twice as wide as it is tall, so two of
+# them cannot stack without the height squeezing each down to a third of the slide.
+# One per slide keeps the per-interconnect labels readable.
+WIDE_PER_SLIDE = 1
 
 RULE_COLOUR = RGBColor(0x7F, 0x7F, 0x7F)
 
@@ -98,7 +101,7 @@ def add_title_slide(presentation, report, manifests):
               34, bold=True)
     names = []
     for manifest in manifests:
-        names.append(manifest["test_type"])
+        names.append(manifest.get("testcase") or manifest["test_type"])
     _add_text(slide, (0.9, 3.6, 11.5, 0.5), " · ".join(names) or "no testcases", 14)
     return slide
 
@@ -110,19 +113,23 @@ def add_section_slide(presentation, text):
     return slide
 
 
+def _is_wide(charts):
+    for chart in charts:
+        if not chart.get("wide"):
+            return False
+    return True
+
+
 def add_chart_slide(presentation, heading, charts, charts_dir):
     slide = _blank_slide(presentation)
     _add_text(slide, HEADING, heading, 16, bold=True)
     _add_rule(slide)
-    if len(charts) == 1:
+    if len(charts) == 1 or _is_wide(charts):
         cells = SINGLE_CELL
     else:
         cells = GRID_CELLS
     for chart, cell in zip(charts, cells):
         _place_chart(slide, chart, cell, charts_dir)
-    _add_text(slide, FOOTNOTE,
-              "Plots regenerated from the raw capture; gaps are entries with no "
-              "measurement rather than zeroes.", 9)
     return slide
 
 
@@ -153,12 +160,44 @@ def _heading_for(scope, page_number, page_count):
     return heading
 
 
+def layout_runs(charts):
+    """Consecutive charts sharing a layout - wide ones take a slide each, others four.
+
+    A switch's charts are its interconnect pages (wide) followed by its temperature
+    chart (not), so one group can need both layouts.
+    """
+    runs = []
+    for chart in charts:
+        wide = bool(chart.get("wide"))
+        if not runs or runs[-1][0] != wide:
+            runs.append((wide, []))
+        runs[-1][1].append(chart)
+    return runs
+
+
+def _slide_pages(charts):
+    pages = []
+    for wide, run in layout_runs(charts):
+        if wide:
+            per_slide = WIDE_PER_SLIDE
+        else:
+            per_slide = PER_SLIDE
+        pages.extend(paginate(run, per_slide))
+    return pages
+
+
 def add_testcase(presentation, manifest, charts_dir):
     """A section divider and the chart slides under it. Returns the slide count."""
-    add_section_slide(presentation, f"{manifest['test_type'].title()} Plots")
+    # a configured testcase name is human-written, so it is used as typed; a detected
+    # one is a lowercase slug and needs capitalising. Detection cannot tell a
+    # shut/no-shut run from a soak, which is why the configured name wins.
+    name = manifest.get("testcase")
+    if not name:
+        name = manifest["test_type"].title()
+    add_section_slide(presentation, f"{name} Plots")
     slides = 1
     for scope, charts in group_by_scope(manifest["charts"]):
-        pages = paginate(charts, PER_SLIDE)
+        pages = _slide_pages(charts)
         for number, page in enumerate(pages, start=1):
             add_chart_slide(presentation, _heading_for(scope, number, len(pages)),
                             page, charts_dir)

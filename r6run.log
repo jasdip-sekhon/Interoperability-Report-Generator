@@ -1,0 +1,138 @@
+== topology ==
+== Soak ==
+Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
+  Info: BER read from the switch ASIC's '*get_fec_counter'.
+  Info: no sheet carries a 'LinkUpTime' column; link-up times are unavailable.
+  soak capture | flaps 640 | ber 640 | tcode 640 | uncorrected_cw 640 | link_up -- | temps 192 | sensors 1
+Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.yml (soak, BER from fec_counter)
+  Wrote 50 chart(s) and manifest.yml
+== Reset ==
+Terahop-R6TB1-DR8-reset-DUT_20260709_204321.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  reset capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Terahop_R6TB1-DR8-reset-Ref_20260710_104300.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  reset capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Warning: switch 0 port 6 lane 1 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 0 port 37 lane 1 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 0 port 45 lane 7 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 3 port 18 lane 1 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 3 port 23 lane 3 flap count differs across runs [0, 1]; keeping 1.
+Warning: further flap-count disagreements not listed individually; see the count below.
+Merged 2 runs: Terahop-R6TB1-DR8-reset-DUT_20260709_204321.yml, Terahop_R6TB1-DR8-reset-Ref_20260710_104300.yml
+  flaps           640 entries
+  ber            1536 entries
+  tcode            -- (absent from every run)
+  uncorrected_cw   -- (absent from every run)
+  link_up         640 entries | 320 only in Terahop-R6TB1-DR8-reset-DUT_20260709_204321.yml | 320 only in Terahop_R6TB1-DR8-reset-Ref_20260710_104300.yml
+  temps           192 entries
+  sensors           1 entries
+  never_recovered 5 + 5 -> 0 (intersected; a lane recovering in any run is not never-recovered)
+  Terahop_R6TB1-DR8-reset-Ref_20260710_104300.yml time-shifted +14.00h onto the shared timeline
+  7 lane(s) disagreed on flap count between runs
+Terahop-R6TB1-DR8-reset-DUT_20260709_204321.yml (reset, BER from vdm)
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+Terahop_R6TB1-DR8-reset-Ref_20260710_104300.yml (reset, BER from vdm)
+  Info: ignored 9506 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+== Shut No-Shut ==
+Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  shut_no-shut capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  shut_no-shut capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Warning: switch 0 port 61 lane 8 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 0 port 62 lane 2 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 3 port 30 lane 4 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 22 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 31 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Merged 2 runs: Terahop-R6TB1-DR8-shut-DUT_20260720_005610.yml, Terahop-R6TB1-DR8-shut-Ref_20260708_071508.yml
+  flaps           640 entries
+  ber            1536 entries
+  tcode            -- (absent from every run)
+  uncorrected_cw   -- (absent from every run)
+  link_up         640 entries | 320 only in Terahop-R6TB1-DR8-shut-DUT_20260720_005610.yml | 320 only in Terahop-R6TB1-DR8-shut-Ref_20260708_071508.yml
+  temps           192 entries
+  sensors           1 entries
+  never_recovered 5 + 5 -> 0 (intersected; a lane recovering in any run is not never-recovered)
+  Terahop-R6TB1-DR8-shut-Ref_20260708_071508.yml time-shifted +0.00h onto the shared timeline
+  5 lane(s) disagreed on flap count between runs
+Terahop-R6TB1-DR8-shut-DUT_20260720_005610.yml (shut_no-shut, BER from vdm)
+  Info: ignored 701 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+Terahop-R6TB1-DR8-shut-Ref_20260708_071508.yml (shut_no-shut, BER from vdm)
+  Info: ignored 7139 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+== Lane 1-1 ==
+Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  lane_1-1 capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  lane_1-1 capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Warning: switch 0 port 46 lane 1 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 22 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Merged 2 runs: Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.yml, Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.yml
+  flaps           640 entries
+  ber            1536 entries
+  tcode            -- (absent from every run)
+  uncorrected_cw   -- (absent from every run)
+  link_up         640 entries | 320 only in Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.yml | 320 only in Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.yml
+  temps           192 entries
+  sensors           1 entries
+  never_recovered 0 + 0 -> 0 (intersected; a lane recovering in any run is not never-recovered)
+  Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.yml time-shifted +0.00h onto the shared timeline
+  2 lane(s) disagreed on flap count between runs
+Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.yml (lane_1-1, BER from vdm)
+  Info: ignored 537 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.yml (lane_1-1, BER from vdm)
+  Info: ignored 668 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+== Lane 2-8 ==
+Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  lane_2-8 capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.xlsx
+  Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
+  lane_2-8 capture | flaps 640 | ber 1536 | tcode -- | uncorrected_cw -- | link_up 320 | temps 192 | sensors 1
+Warning: switch 0 port 62 lane 2 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 21 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 29 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Warning: switch 4 port 31 lane 0 flap count differs across runs [0, 1]; keeping 1.
+Merged 2 runs: Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.yml, Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.yml
+  flaps           640 entries
+  ber            1536 entries
+  tcode            -- (absent from every run)
+  uncorrected_cw   -- (absent from every run)
+  link_up         640 entries | 320 only in Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.yml | 320 only in Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.yml
+  temps           192 entries
+  sensors           1 entries
+  never_recovered 0 + 0 -> 0 (intersected; a lane recovering in any run is not never-recovered)
+  Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.yml time-shifted +0.00h onto the shared timeline
+  4 lane(s) disagreed on flap count between runs
+Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.yml (lane_2-8, BER from vdm)
+  Info: ignored 3275 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.yml (lane_2-8, BER from vdm)
+  Info: ignored 58 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
+  Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
+  Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
+  Wrote 39 chart(s) and manifest.yml
+== deck ==
+Wrote C:\Users\jasdi\Documents\Report Generator\output\rack6-tb1.pptx - 372 slides from 362 chart(s) across 9 testcase(s)

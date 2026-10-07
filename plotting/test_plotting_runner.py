@@ -9,6 +9,7 @@ from plotting_runner import (
     SATURATED_BER,
     _break_at_seams,
     _flaps_per_switch,
+    _lane_scalars,
     _lane_values,
     _sensor_points,
     _temps_per_port,
@@ -68,6 +69,24 @@ assert values[("0", 1, 1)] == [1e-11, 2e-11], values[("0", 1, 1)]
 keep = _lane_values([lane("0", 1, 1, [0.5, 1.0])])
 assert keep[("0", 1, 1)] == [0.5, 1.0], "only BER saturates; tcode and link_up do not"
 print("ok  saturation filter: >= 0.5 dropped for BER, left alone otherwise")
+
+
+# --- some metrics are one number per lane, not a list of readings ----------------
+
+scalars = _lane_scalars([
+    {"switch": "0", "port": 1, "lane": 1, "count": 0, "never_recovered": False},
+    {"switch": "0", "port": 6, "lane": 1, "count": 2, "never_recovered": False},
+], "count")
+assert scalars[("0", 1, 1)] == 0, "a measured zero is a value, not an absence"
+assert scalars[("0", 6, 1)] == 2
+# a flap count is a total, so there is nothing to box or scatter - it stays a number
+assert not isinstance(scalars[("0", 6, 1)], list)
+print("ok  _lane_scalars: one number per lane, zero kept as a value")
+
+aliased = _lane_scalars([{"switch": "0", "port": 3, "lane": 0, "count": 1}], "count")
+assert aliased[("0", 3, 0)] == 1 and aliased[("0", 3, 1)] == 1, \
+    "the lane-0 alias applies here too, or un-broken-out ports lose their label"
+print("ok  _lane_scalars: lane 0 aliased to lane 1 like the values path")
 
 
 # --- flaps are stored per lane and charted per switch ----------------------------

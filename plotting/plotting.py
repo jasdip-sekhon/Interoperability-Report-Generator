@@ -181,7 +181,16 @@ class Plots:
         colorbar = figure.colorbar(mappable, ax=axes)
         colorbar.set_label(label)
 
-    def temp_time_series(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, sensor_points=None):
+    def value_series(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, overlay_points=None, overlay_label="Overlay"):
+        """One line per key over a continuous x axis, coloured by its own value.
+
+        Colour and height both encode the value, so a series can be read for level and
+        for trend at once, and the colourbar makes the scale comparable between charts.
+
+        overlay_points is a single extra series drawn as a plain dark line on top - a
+        reference the other series are read against. It is labelled by overlay_label,
+        and is the only series that appears in the legend.
+        """
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=(12, 6))
@@ -190,8 +199,8 @@ class Plots:
         all_values = []
         for timestamps, values in series:
             all_values.extend(values)
-        if sensor_points:
-            for timestamp, value in sensor_points:
+        if overlay_points:
+            for timestamp, value in overlay_points:
                 all_values.append(value)
         vmin = spec_min if spec_min is not None else min(all_values, default=0)
         vmax = spec_max if spec_max is not None else max(all_values, default=1)
@@ -201,14 +210,16 @@ class Plots:
             segments = self._segments(timestamps, values)
             if segments:
                 line = LineCollection(segments, cmap=self.style["VALUE_CMAP"], norm=norm)
-                colors = []
+                # each segment takes the colour of the value it starts at; this cannot
+                # be values[:-1] because segments spanning a gap were dropped
+                segment_colors = []
                 for segment in segments:
-                    colors.append(segment[0][1])
-                line.set_array(colors)
+                    segment_colors.append(segment[0][1])
+                line.set_array(segment_colors)
                 axes.add_collection(line)
                 continue
-            # isolated samples have no segment to colour — a lone reading, or each half
-            # of a merged capture holding one. Show them rather than drawing nothing.
+            # isolated samples have no segment to colour — a series of one, or one point
+            # stranded either side of a gap. Show them rather than drawing nothing.
             points_x = []
             points_y = []
             for i in range(len(timestamps)):
@@ -221,13 +232,14 @@ class Plots:
         axes.relim()
         axes.autoscale_view()
 
-        if sensor_points:
-            sensor_x = []
-            sensor_y = []
-            for timestamp, value in sensor_points:
-                sensor_x.append(timestamp)
-                sensor_y.append(value)
-            axes.plot(sensor_x, sensor_y, color="black", marker="o", markersize=4, label="Board Sensor", linewidth=1.5)
+        if overlay_points:
+            overlay_x = []
+            overlay_y = []
+            for timestamp, value in overlay_points:
+                overlay_x.append(timestamp)
+                overlay_y.append(value)
+            axes.plot(overlay_x, overlay_y, color="black", marker="o", markersize=4,
+                      label=overlay_label, linewidth=1.5)
             axes.legend(loc="upper left", frameon=True)
 
         axes.grid(True, alpha=0.3)

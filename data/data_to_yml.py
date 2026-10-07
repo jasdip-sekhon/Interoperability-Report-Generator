@@ -72,7 +72,15 @@ def _group_by_lane(records, column):
         lanes[key].append(record[column])
     return lanes
 
-def collect_link_flaps(flap_records, test_type):
+def collect_link_flaps(flap_records, recovery_commanded=False):
+    """Per-lane flap counts, and whether a lane never came back.
+
+    never_recovered only means something for a lane that was actually commanded down. A
+    reset or a shut/no-shut knocks the whole fabric over, so every lane qualifies. A soak
+    knocks nothing over, and a lane test knocks over exactly one - in both of those a
+    lane reading raw 0 was simply never asked to recover, so reporting it as a failure
+    would flag hundreds of healthy lanes. Hence null unless the caller says otherwise.
+    """
     lanes = _group_by_lane(flap_records, "Down->Up")
 
     flap_data = []
@@ -90,7 +98,7 @@ def collect_link_flaps(flap_records, test_type):
                 count = corrected
 
         # Determine if the link never recovered (all raw values are 0)
-        if test_type == "soak":
+        if not recovery_commanded:
             never_recovered = None
         else:
             never_recovered = True
@@ -324,7 +332,13 @@ def collect_meta_data(log_records, module_records, test_type):
 
 
 def _detect_test_type(wb):
-    # a reset capture records the reset step it performed; soak has no such sheet
+    """Guess the testcase from the sheets present.
+
+    This can only tell a reset from everything else, and "everything else" includes
+    shut/no-shut and the lane tests as well as soak - which matters, because the
+    never_recovered signal is meaningful for all of those but not for soak. A caller
+    that knows the testcase should say so rather than rely on this.
+    """
     if _find_sheet(wb, "module_reset", required=False) is None:
         return "soak"
     return "reset"
@@ -368,13 +382,15 @@ def _report_sections(test_type, measurements):
             counts.append(f"{section} {len(value)}")
     print(f"  {test_type} capture | " + " | ".join(counts))
 
-def data_to_yml(data, yml_file):
+def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
     # read_only streams the sheets instead of building the whole workbook in memory;
     # on a real 361MB soak that is the difference between seconds and half an hour
     wb = load_workbook(data, read_only=True)
     print(f"{Path(data).name}")
 
-    test_type = _detect_test_type(wb)
+    # the caller usually knows which testcase this is; detection is the fallback
+    if test_type is None:
+        test_type = _detect_test_type(wb)
 
     log_records = _sheet_records(wb, "log",
         "measurements have no timeline, so temperatures will be dropped")
@@ -397,7 +413,7 @@ def data_to_yml(data, yml_file):
     if flap_records is None:
         flaps = None
     else:
-        flaps = collect_link_flaps(flap_records, test_type)
+        flaps = collect_link_flaps(flap_records, recovery_commanded)
 
     if module_records is None or not timestamps:
         temps = None

@@ -2,7 +2,9 @@
 # files pair is not something a filename can be trusted to say: a reset testcase is
 # captured twice, DUT-run and Ref-run, and neither half is authoritative on its own.
 #
-# One capture under a testcase is used as-is. Two or more are merged first.
+# Each capture is charted on its own - a DUT run and a Ref run reset different
+# hardware, so merging them would seam every time series. The merged yaml is still
+# written, for the analysis stage that needs the union.
 
 report: R12-TB1
 
@@ -14,6 +16,9 @@ testcases:
       - references/soak_sample.xlsx
 
   - name: Reset
+    recovery_commanded: true
     captures:
-      - references/reset_dut_sample.xlsx
-      - references/reset_ref_sample.xlsx
+      - label: DUT
+        file: references/reset_dut_sample.xlsx
+      - label: Ref
+        file: references/reset_ref_sample.xlsx

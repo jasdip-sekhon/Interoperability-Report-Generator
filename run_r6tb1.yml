@@ -1,0 +1,44 @@
+# Rack6-TB1, against the real captures rather than the redacted fixtures.
+#
+# Five testcases, matching the sections of the hand-built report. Each reset/shut
+# testcase is captured twice - DUT-run and Ref-run - and neither half is authoritative,
+# so both are listed and merged.
+
+report: Rack6-TB1
+
+topology: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Rack6_TB1_Tx_Rx_Interconnects.xlsx
+
+testcases:
+  - name: Soak
+    captures:
+      - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
+
+  - name: Reset
+    recovery_commanded: true
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-reset-DUT_20260709_204321.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop_R6TB1-DR8-reset-Ref_20260710_104300.xlsx
+
+  - name: Shut No-Shut
+    recovery_commanded: true
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
+
+  - name: Lane 1-1
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.xlsx
+
+  - name: Lane 2-8
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.xlsx
