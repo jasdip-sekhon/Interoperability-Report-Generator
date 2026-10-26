@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 
+import _bootstrap
 from plotting import Plots
 
 # a temp folder, not output/: these are synthetic charts proving the library draws, not

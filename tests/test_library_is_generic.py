@@ -13,8 +13,9 @@ import ast
 import re
 from pathlib import Path
 
-LIBRARY = Path(__file__).parent / "plotting.py"
-STYLE = Path(__file__).parent / "plotting_style.yaml"
+PLOTTING_DIR = Path(__file__).parent.parent / "plotting"
+LIBRARY = PLOTTING_DIR / "plotting.py"
+STYLE = PLOTTING_DIR / "plotting_style.yaml"
 
 # anything this project's problem domain would call a thing. A chart library that knows
 # these words is a chart library that cannot be reused.

@@ -12,6 +12,7 @@ import yaml
 from PIL import Image
 from pptx import Presentation
 
+import _bootstrap
 from build_deck import (
     GRID_CELLS,
     PER_SLIDE,

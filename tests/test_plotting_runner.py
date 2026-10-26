@@ -5,6 +5,7 @@ switches and ports differently, so a mistake here silently drops entries off a c
 rather than failing - which is the failure mode worth pinning down.
 """
 
+import _bootstrap
 from plotting_runner import (
     SATURATED_BER,
     _break_at_seams,

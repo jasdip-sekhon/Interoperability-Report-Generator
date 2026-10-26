@@ -23,7 +23,7 @@ deck/
   build_deck.py          manifest + PNGs -> pptx
 output/                  the deck, plus one folder of charts per testcase
   <testcase>/            its PNGs and manifest.yml — wiped by the runner, not tracked
-  test/                  charts from test_plotting.py, kept out of the deck's way
+tests/                   every test_*.py, run via tests/run_all.py
 references/              redacted sample captures used as fixtures
 ```
 
@@ -91,13 +91,20 @@ reason rather than being silently thin.
 
 ## Tests
 
+Every test is a standalone script (asserts, not a framework) and lives in `tests/`,
+regardless of which stage it covers — a test importing its module by bare name is what
+`tests/_bootstrap.py` sets up, the same sys.path trick `main.py` uses to let the stages
+import each other.
+
 ```bash
-python data/test_data_to_yml.py        # parsers, against synthetic records
-python data/test_merge_runs.py         # the per-field merge rules
-python plotting/test_plotting_runner.py     # the topology/measurement join
-python plotting/test_plotting.py            # renders one of each chart type
-python plotting/test_library_is_generic.py  # plotting.py stays domain-free
-python deck/test_build_deck.py              # slide layout and manifest handling
+python tests/run_all.py                    # everything, one command
+
+python tests/test_data_to_yml.py           # parsers, against synthetic records
+python tests/test_merge_runs.py            # the per-field merge rules
+python tests/test_plotting_runner.py       # the topology/measurement join
+python tests/test_plotting.py              # renders one of each chart type
+python tests/test_library_is_generic.py    # plotting.py stays domain-free
+python tests/test_build_deck.py            # slide layout and manifest handling
 ```
 
 The fixtures hold one reading per lane, so the grouping, merging and seam logic are

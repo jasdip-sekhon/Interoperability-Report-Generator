@@ -10,6 +10,7 @@ import tempfile
 
 import yaml
 
+import _bootstrap
 from merge_runs import (
     MAX_LISTED_CONFLICTS,
     merge_flaps,

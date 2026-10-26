@@ -5,7 +5,7 @@ Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
   Info: no sheet carries a 'LinkUpTime' column; link-up times are unavailable.
   soak capture | flaps 640 | ber 640 | tcode 640 | uncorrected_cw 640 | link_up -- | temps 192 | sensors 1
 Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.yml (soak, BER from fec_counter)
-  Wrote 50 chart(s) and manifest.yml
+  Wrote 61 chart(s) and manifest.yml
 == Reset ==
 Terahop-R6TB1-DR8-reset-DUT_20260709_204321.xlsx
   Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
@@ -33,12 +33,12 @@ Merged 2 runs: Terahop-R6TB1-DR8-reset-DUT_20260709_204321.yml, Terahop_R6TB1-DR
 Terahop-R6TB1-DR8-reset-DUT_20260709_204321.yml (reset, BER from vdm)
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 Terahop_R6TB1-DR8-reset-Ref_20260710_104300.yml (reset, BER from vdm)
   Info: ignored 9506 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 == Shut No-Shut ==
 Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
   Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
@@ -66,12 +66,12 @@ Terahop-R6TB1-DR8-shut-DUT_20260720_005610.yml (shut_no-shut, BER from vdm)
   Info: ignored 701 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 Terahop-R6TB1-DR8-shut-Ref_20260708_071508.yml (shut_no-shut, BER from vdm)
   Info: ignored 7139 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 == Lane 1-1 ==
 Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
   Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
@@ -96,12 +96,12 @@ Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.yml (lane_1-1, BER from vdm)
   Info: ignored 537 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.yml (lane_1-1, BER from vdm)
   Info: ignored 668 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 == Lane 2-8 ==
 Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
   Info: no '*get_fec_counter' sheet; using the module's own VDM Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.
@@ -128,11 +128,12 @@ Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.yml (lane_2-8, BER from vdm)
   Info: ignored 3275 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.yml (lane_2-8, BER from vdm)
   Info: ignored 58 reading(s) at or above 0.5 as saturated; a link that wrong is a coin flip, not a measurement.
   Warning: 64 of 640 interconnects have no BER measurement; they will render as gaps.
   Warning: 320 of 640 interconnects have no link-up measurement; they will render as gaps.
-  Wrote 39 chart(s) and manifest.yml
+  Wrote 50 chart(s) and manifest.yml
 == deck ==
-Wrote C:\Users\jasdi\Documents\Report Generator\output\rack6-tb1.pptx - 372 slides from 362 chart(s) across 9 testcase(s)
+Wrote C:\Users\jasdi\Documents\Report Generator\output\rack6-tb1.pptx - 471 slides from 461 chart(s) across 9 testcase(s)
+PYTHON_EXIT=0

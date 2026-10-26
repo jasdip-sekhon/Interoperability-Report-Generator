@@ -8,6 +8,7 @@ of the same lane - is never covered by running against references/.
 
 from datetime import datetime
 
+import _bootstrap
 from data_to_yml import (
     collect_ber_from_vdm,
     collect_link_flaps,
