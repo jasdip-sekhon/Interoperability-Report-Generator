@@ -1,19 +1,26 @@
 """Render every chart for one capture, from the yaml the converters produce.
 
-interconnects.yml supplies the x axis, the measurement yaml supplies the values. The two
-name switches and ports differently, so the topology side is normalised onto the
-measurement side's keys (see _topology_key). A manifest declares what was drawn, so the
-deck builder needs no knowledge of switches or metrics.
+interconnects.yml supplies the x axis, the measurement yaml the values. The two spell
+switches and ports differently, so topology keys are normalised onto the measurement
+side's (see _topology_key).
 
-Functions appear in the order the pipeline runs them, and each chart family is one block:
-its reshape helper, then the draw_* that consumes it.
+Two independent things vary between charts:
 
-Every draw_* function follows the same recipe:
+  axis   what the x ticks are - switches, interconnects, or elapsed time
+  scope  what one file covers - the whole rack ("all") or one switch
+
+Interconnects are the default axis, so a name says "by_interconnect" only where another
+chart draws the same metric differently. Scope appears in no name: _draw_per_switch
+gives every interconnect chart one file per switch. It lands in the manifest, which is
+all the deck builder reads - it groups slides on scope without knowing what a metric is.
+
+Functions run in pipeline order, each chart family one block: reshape helper, then the
+draw_* that uses it. Every draw_* follows the same recipe:
 
 1. guard:    if records is None: return []
 2. reshape:  records -> {(switch, port, lane): value}
 3. report:   _report_unmatched, for interconnects with nothing measured
-4. draw:     _draw_paged - one chart per switch, paged when a switch has many lanes
+4. draw:     _draw_per_switch - one chart per switch, paged when a switch has many lanes
 5. record:   return one manifest entry per chart drawn
 """
 
@@ -98,7 +105,10 @@ def build_measured_axis(measurements):
     """x axis from what was measured, for a rack with no topology file."""
     keys = []
     for section in ("ber", "tcode", "uncorrected_cw", "link_up"):
-        for record in measurements.get(section) or []:
+        records = measurements.get(section)
+        if records is None:
+            continue
+        for record in records:
             key = (record["switch"], record["port"], record["lane"])
             if key not in keys:
                 keys.append(key)
@@ -113,7 +123,10 @@ def build_measured_switches(measurements):
     """Switch axis from what was measured, when there is no topology to order it."""
     keys = []
     for section in ("flaps", "temps", "ber"):
-        for record in measurements.get(section) or []:
+        records = measurements.get(section)
+        if records is None:
+            continue
+        for record in records:
             if record["switch"] not in keys:
                 keys.append(record["switch"])
     keys.sort(key=str)
@@ -123,7 +136,7 @@ def build_measured_switches(measurements):
     return keys, labels
 
 
-# --- what every draw_* leans on --------------------------------------------------
+# --- shared by every chart: axis check, per-switch split, paging -----------------
 
 def _report_unmatched(keys, values, what):
     missing = 0
@@ -135,20 +148,23 @@ def _report_unmatched(keys, values, what):
               f"measurement; they will render as gaps.")
 
 
-def _by_switch(keys, labels):
+def _split_by_switch(keys, labels):
     """[(switch, keys, labels)] - one x axis per switch, in first-seen order."""
-    grouped = {}
-    for key, label in zip(keys, labels):
-        switch = key[0]
-        if switch not in grouped:
-            grouped[switch] = ([], [])
-        grouped[switch][0].append(key)
-        grouped[switch][1].append(label)
+    order = []
+    keys_by_switch = {}
+    labels_by_switch = {}
+    for i in range(len(keys)):
+        switch = keys[i][0]
+        if switch not in keys_by_switch:
+            order.append(switch)
+            keys_by_switch[switch] = []
+            labels_by_switch[switch] = []
+        keys_by_switch[switch].append(keys[i])
+        labels_by_switch[switch].append(labels[i])
 
     axes = []
-    for switch in grouped:
-        switch_keys, switch_labels = grouped[switch]
-        axes.append((switch, switch_keys, switch_labels))
+    for switch in order:
+        axes.append((switch, keys_by_switch[switch], labels_by_switch[switch]))
     return axes
 
 
@@ -161,12 +177,13 @@ def _pages(keys, labels):
     return pages
 
 
-def _draw_paged(draw, values, keys, labels, stem, title, ylabel, out_dir):
+def _draw_per_switch(draw, values, keys, labels, stem, title, ylabel, out_dir):
     """One chart per switch, paged when a switch has more lanes than fit on an axis."""
     drawn = []
-    for switch, switch_keys, switch_labels in _by_switch(keys, labels):
+    for switch, switch_keys, switch_labels in _split_by_switch(keys, labels):
         pages = _pages(switch_keys, switch_labels)
-        for number, (page_keys, page_labels) in enumerate(pages, start=1):
+        number = 1
+        for page_keys, page_labels in pages:
             page_title = f"{title} — switch {switch}"
             name = f"{stem}_sw{switch}.png"
             if len(pages) > 1:
@@ -176,15 +193,16 @@ def _draw_paged(draw, values, keys, labels, stem, title, ylabel, out_dir):
                  out_path=output_path(name, out_dir))
             drawn.append({"file": name, "title": page_title, "scope": switch,
                           "wide": True})
+            number = number + 1
     return drawn
 
 
-# --- flaps, summarised per switch ------------------------------------------------
+# --- flaps on a switch axis ------------------------------------------------------
 
-def _flaps_per_switch(records):
+def _totals_per_switch(records):
     """Per-lane flap records -> {switch: total}, summed across that switch's lanes."""
     totals = {}
-    for record in records or []:
+    for record in records:
         switch = record["switch"]
         if switch not in totals:
             totals[switch] = 0
@@ -192,24 +210,24 @@ def _flaps_per_switch(records):
     return totals
 
 
-def draw_flap_summary(measurements, keys, labels, out_dir):
+def draw_flaps_by_switch(measurements, keys, labels, out_dir):
     """One bar per switch: how many flaps it saw across all its lanes."""
     records = measurements["flaps"]
     if records is None:
         return []
     title = "Link flaps by switch"
-    plots.bargraph(_flaps_per_switch(records), keys, labels,
+    plots.bargraph(_totals_per_switch(records), keys, labels,
                    title=title, ylabel="Flaps",
                    out_path=output_path("flaps.png", out_dir))
     return [{"file": "flaps.png", "title": title, "scope": "all"}]
 
 
-# --- flaps, one bar per interconnect ---------------------------------------------
+# --- flaps on the interconnect axis ----------------------------------------------
 
 def _lane_scalars(records, field):
     """Per-lane records -> {(switch, port, lane): number} for the bar chart."""
     values = {}
-    for record in records or []:
+    for record in records:
         key = (record["switch"], record["port"], record["lane"])
         values[key] = record[field]
         if record["lane"] == 0:  # un-broken-out port; topology calls it lane 1
@@ -217,16 +235,16 @@ def _lane_scalars(records, field):
     return values
 
 
-def draw_link_flaps(measurements, keys, labels, out_dir):
+def draw_flaps_by_interconnect(measurements, keys, labels, out_dir):
     records = measurements["flaps"]
     if records is None:
         return []
     values = _lane_scalars(records, "count")
     _report_unmatched(keys, values, "link flap")
-    return _draw_paged(plots.bargraph, values, keys, labels,
-                       stem="link_flap_bar",
-                       title="Link flap count by interconnect",
-                       ylabel="Flaps", out_dir=out_dir)
+    return _draw_per_switch(plots.bargraph, values, keys, labels,
+                            stem="link_flap_bar",
+                            title="Link flap count by interconnect",
+                            ylabel="Flaps", out_dir=out_dir)
 
 
 # --- the four metrics with many readings per lane --------------------------------
@@ -235,7 +253,7 @@ def _lane_values(records, drop_at_or_above=None):
     """Per-lane records -> {(switch, port, lane): [values]} for the box and dot plots."""
     values = {}
     dropped = 0
-    for record in records or []:
+    for record in records:
         key = (record["switch"], record["port"], record["lane"])
         clean = []
         for value in record["values"]:
@@ -260,10 +278,10 @@ def draw_ber(measurements, meta, keys, labels, out_dir):
         return []
     values = _lane_values(records, drop_at_or_above=SATURATED_BER)
     _report_unmatched(keys, values, "BER")
-    return _draw_paged(plots.box_plot, values, keys, labels,
-                       stem="pre_fec_ber_box",
-                       title=f"Pre-FEC BER by interconnect ({meta['ber_source']})",
-                       ylabel="Pre-FEC BER", out_dir=out_dir)
+    return _draw_per_switch(plots.box_plot, values, keys, labels,
+                            stem="pre_fec_ber_box",
+                            title=f"Pre-FEC BER by interconnect ({meta['ber_source']})",
+                            ylabel="Pre-FEC BER", out_dir=out_dir)
 
 
 def draw_tcode(measurements, keys, labels, out_dir):
@@ -272,10 +290,10 @@ def draw_tcode(measurements, keys, labels, out_dir):
         return []
     values = _lane_values(records)
     _report_unmatched(keys, values, "T-Code")
-    return _draw_paged(plots.dot_plot, values, keys, labels,
-                       stem="tcode_dot",
-                       title="T-Code by interconnect",
-                       ylabel="T-Code", out_dir=out_dir)
+    return _draw_per_switch(plots.dot_plot, values, keys, labels,
+                            stem="tcode_dot",
+                            title="T-Code by interconnect",
+                            ylabel="T-Code", out_dir=out_dir)
 
 
 def draw_uncorrected_cw(measurements, keys, labels, out_dir):
@@ -284,10 +302,10 @@ def draw_uncorrected_cw(measurements, keys, labels, out_dir):
         return []
     values = _lane_values(records)
     _report_unmatched(keys, values, "uncorrected codeword")
-    return _draw_paged(plots.dot_plot, values, keys, labels,
-                       stem="uncorrected_cw_dot",
-                       title="Uncorrected codewords by interconnect",
-                       ylabel="Uncorrected codewords", out_dir=out_dir)
+    return _draw_per_switch(plots.dot_plot, values, keys, labels,
+                            stem="uncorrected_cw_dot",
+                            title="Uncorrected codewords by interconnect",
+                            ylabel="Uncorrected codewords", out_dir=out_dir)
 
 
 def draw_link_up(measurements, keys, labels, out_dir):
@@ -296,10 +314,10 @@ def draw_link_up(measurements, keys, labels, out_dir):
         return []
     values = _lane_values(records)
     _report_unmatched(keys, values, "link-up")
-    return _draw_paged(plots.dot_plot, values, keys, labels,
-                       stem="link_up_dot",
-                       title="Link-up time by interconnect",
-                       ylabel="Seconds", out_dir=out_dir)
+    return _draw_per_switch(plots.dot_plot, values, keys, labels,
+                            stem="link_up_dot",
+                            title="Link-up time by interconnect",
+                            ylabel="Seconds", out_dir=out_dir)
 
 
 # --- temperature over time, the one chart with an x axis of its own --------------
@@ -321,8 +339,10 @@ def _break_at_seams(points, seams):
 
 def _temps_per_port(records, switch, seams):
     """One switch's module temperatures -> {port: [(hours, celsius)]}."""
+    if records is None:
+        return {}
     series = {}
-    for record in records or []:
+    for record in records:
         if record["switch"] != switch:
             continue
         points = []
@@ -334,9 +354,13 @@ def _temps_per_port(records, switch, seams):
 
 
 def _sensor_points(records, switch, seams):
-    for record in records or []:
+    if records is None:
+        return None
+    for record in records:
         if record["switch"] == switch:
-            points = [(hours, value) for hours, value in record["points"]]
+            points = []
+            for hours, value in record["points"]:
+                points.append((hours, value))
             return _break_at_seams(points, seams)
     return None
 
@@ -356,7 +380,7 @@ def _report_flat_series(switch, temps):
               f"module, so the chart shows points rather than a trend over time.")
 
 
-def draw_temperatures(measurements, meta, keys, seams, out_dir):
+def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
     """One chart per switch: its ports are the lines, its board sensor an extra one."""
     drawn = []
     for switch in keys:
@@ -369,8 +393,12 @@ def draw_temperatures(measurements, meta, keys, seams, out_dir):
         labels = []
         for port in ports:
             labels.append(f"port {port}")
-        info = meta["switches"].get(switch) or {}
-        model = info.get("device_model") or "unknown"
+        info = meta["switches"].get(switch)
+        if info is None:
+            info = {}
+        model = info.get("device_model")
+        if model is None:
+            model = "unknown"
         name = f"temp_switch_{switch}.png"
         title = f"Module temperature over time — switch {switch} ({model})"
         plots.value_series(temps, ports, labels,
@@ -389,23 +417,36 @@ def draw_temperatures(measurements, meta, keys, seams, out_dir):
 
 # --- the manifest, written once every chart is on disk ---------------------------
 
-def _by_scope(charts):
+def _sort_by_scope(charts):
     """Reorder so each switch's charts arrive together, the 'all' ones first.
 
-    A stable sort keeps the metric order within each switch.
+    Charts keep the order the draw_* functions produced them in, within each switch.
     """
-    def scope_order(chart):
+    ordered = []
+    for chart in charts:
         if chart["scope"] == "all":
-            return (0, "")
-        return (1, str(chart["scope"]))
-    return sorted(charts, key=scope_order)
+            ordered.append(chart)
+
+    switches = []
+    for chart in charts:
+        if chart["scope"] != "all" and chart["scope"] not in switches:
+            switches.append(chart["scope"])
+    switches.sort(key=str)
+
+    for switch in switches:
+        for chart in charts:
+            if chart["scope"] == switch:
+                ordered.append(chart)
+    return ordered
 
 
 def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
     """Declare what was drawn, in the order it should be presented."""
+    if testcase is None:
+        testcase = meta["test_type"]
     manifest = {
         "capture": Path(measurements_yml).name,
-        "testcase": testcase or meta["test_type"],
+        "testcase": testcase,
         "test_type": meta["test_type"],
         "ber_source": meta["ber_source"],
         "charts": charts,
@@ -438,21 +479,26 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)
 
-    seams = meta.get("seams") or []
+    seams = meta.get("seams")
+    if seams is None:
+        seams = []
     if seams:
+        at = []
+        for seam in seams:
+            at.append(f"{seam:.1f}h")
         print(f"  Info: merged capture; lines break at {len(seams)} run boundary "
-              f"({', '.join(f'{s:.1f}h' for s in seams)}) where nothing was measured.")
+              f"({', '.join(at)}) where nothing was measured.")
 
     charts = []
-    charts.extend(draw_flap_summary(measurements, switch_keys, switch_labels, out_dir))
-    charts.extend(draw_link_flaps(measurements, keys, labels, out_dir))
+    charts.extend(draw_flaps_by_switch(measurements, switch_keys, switch_labels, out_dir))
+    charts.extend(draw_flaps_by_interconnect(measurements, keys, labels, out_dir))
     charts.extend(draw_ber(measurements, meta, keys, labels, out_dir))
     charts.extend(draw_tcode(measurements, keys, labels, out_dir))
     charts.extend(draw_uncorrected_cw(measurements, keys, labels, out_dir))
     charts.extend(draw_link_up(measurements, keys, labels, out_dir))
-    charts.extend(draw_temperatures(measurements, meta, switch_keys, seams, out_dir))
+    charts.extend(draw_temperature_over_time(measurements, meta, switch_keys, seams, out_dir))
 
-    return _write_manifest(measurements_yml, meta, _by_scope(charts), out_dir, testcase)
+    return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir, testcase)
 
 
 if __name__ == "__main__":
@@ -464,5 +510,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--out-dir",
                         help="where the charts go (default: output/<capture name>/)")
     args = parser.parse_args()
-    out_dir = args.out_dir or OUTPUT_DIR / Path(args.measurements).stem
+    if args.out_dir is None:
+        out_dir = OUTPUT_DIR / Path(args.measurements).stem
+    else:
+        out_dir = args.out_dir
     generate_plots(args.measurements, out_dir)

@@ -9,7 +9,7 @@ import _bootstrap
 from plotting_runner import (
     SATURATED_BER,
     _break_at_seams,
-    _flaps_per_switch,
+    _totals_per_switch,
     _lane_scalars,
     _lane_values,
     _sensor_points,
@@ -92,13 +92,13 @@ print("ok  _lane_scalars: lane 0 aliased to lane 1 like the values path")
 
 # --- flaps are stored per lane and charted per switch ----------------------------
 
-totals = _flaps_per_switch([
+totals = _totals_per_switch([
     {"switch": "0", "port": 1, "lane": 1, "count": 2},
     {"switch": "0", "port": 1, "lane": 2, "count": 3},
     {"switch": "4-33", "port": 1, "lane": 1, "count": 0},
 ])
 assert totals == {"0": 5, "4-33": 0}, totals
-print("ok  _flaps_per_switch: lane counts sum onto their switch")
+print("ok  _totals_per_switch: lane counts sum onto their switch")
 
 
 # --- nothing was measured across a seam, so no line may span it ------------------
