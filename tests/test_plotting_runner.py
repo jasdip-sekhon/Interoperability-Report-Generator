@@ -15,8 +15,8 @@ from plotting_runner import (
     _sensor_points,
     _temps_per_port,
     _topology_key,
-    build_interconnect_x_axis,
-    build_switch_x_axis,
+    build_interconnect_axis,
+    build_switch_axis,
 )
 
 
@@ -38,11 +38,11 @@ assert _topology_key(topology("4-33", "12-4")) == ("4-33", 12, 4), \
 assert _topology_key(topology("sw0", "2-1")) == ("0", 2, 1), "prefix match is case-insensitive"
 print("ok  _topology_key: 'SW0' + '1-1' -> ('0', 1, 1)")
 
-keys, labels = build_interconnect_x_axis([topology("SW0", "1-1", "a"),
+keys, labels = build_interconnect_axis([topology("SW0", "1-1", "a"),
                                           topology("4-33", "2-1", "b")])
 assert keys == [("0", 1, 1), ("4-33", 2, 1)]
 assert labels == ["a", "b"], "labels keep the topology's own wording and order"
-switch_keys, switch_labels = build_switch_x_axis([topology("SW0", "1-1"),
+switch_keys, switch_labels = build_switch_axis([topology("SW0", "1-1"),
                                                   topology("SW0", "1-2"),
                                                   topology("4-33", "2-1")])
 assert switch_keys == ["0", "4-33"], "switches dedupe in first-seen order"
@@ -126,7 +126,7 @@ print("ok  temps and sensors both break at the seam")
 # --- a measurement with no topology entry must not be silently charted -----------
 
 values = _lane_values([lane("0", 99, 1, [1e-11])])
-keys, _ = build_interconnect_x_axis([topology("SW0", "1-1")])
+keys, _ = build_interconnect_axis([topology("SW0", "1-1")])
 missing = [key for key in keys if key not in values]
 assert missing == [("0", 1, 1)], \
     "an interconnect with no measurement is reported, not quietly dropped"
