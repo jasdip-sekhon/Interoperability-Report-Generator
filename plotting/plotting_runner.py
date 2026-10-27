@@ -20,7 +20,7 @@ draw_* that uses it. Every draw_* follows the same recipe:
 1. guard:    if records is None: return []
 2. reshape:  records -> {(switch, port, lane): value}
 3. report:   _report_unmatched, for interconnects with nothing measured
-4. draw:     _draw_per_switch - one chart per switch, paged when a switch has many lanes
+4. draw:     _draw_per_switch - one chart per switch, split when a switch has many lanes
 5. record:   return one manifest entry per chart drawn
 """
 
@@ -168,30 +168,35 @@ def _split_by_switch(keys, labels):
     return axes
 
 
-def _pages(keys, labels):
-    """Split one switch's x axis into chart-sized pages."""
-    per_page = plots.style["MAX_ENTRIES_PER_PAGE"]
-    pages = []
-    for start in range(0, len(keys), per_page):
-        pages.append((keys[start:start + per_page], labels[start:start + per_page]))
-    return pages
+def _chunks(keys, labels):
+    """Split one switch's x axis into chart-sized chunks."""
+    per_chart = plots.style["MAX_X_AXIS_ENTRIES_PER_CHART"]
+    chunks = []
+    for start in range(0, len(keys), per_chart):
+        chunks.append((keys[start:start + per_chart], labels[start:start + per_chart]))
+    return chunks
 
 
 def _draw_per_switch(draw, values, keys, labels, stem, title, ylabel, out_dir):
-    """One chart per switch, paged when a switch has more lanes than fit on an axis."""
+    """One chart per switch, split again when a switch has more lanes than fit on an axis.
+
+    A split chart is numbered "(2 of 4)" with no noun. The deck heading above it already
+    says "page N of M" about slides, and two different counts calling themselves pages on
+    one slide is how you make a reader distrust both.
+    """
     drawn = []
     for switch, switch_keys, switch_labels in _split_by_switch(keys, labels):
-        pages = _pages(switch_keys, switch_labels)
+        chunks = _chunks(switch_keys, switch_labels)
         number = 1
-        for page_keys, page_labels in pages:
-            page_title = f"{title} — switch {switch}"
+        for chunk_keys, chunk_labels in chunks:
+            chart_title = f"{title} — switch {switch}"
             name = f"{stem}_sw{switch}.png"
-            if len(pages) > 1:
-                page_title = f"{page_title} (page {number} of {len(pages)})"
+            if len(chunks) > 1:
+                chart_title = f"{chart_title} ({number} of {len(chunks)})"
                 name = f"{stem}_sw{switch}_p{number}.png"
-            draw(values, page_keys, page_labels, title=page_title, ylabel=ylabel,
+            draw(values, chunk_keys, chunk_labels, title=chart_title, ylabel=ylabel,
                  out_path=output_path(name, out_dir))
-            drawn.append({"file": name, "title": page_title, "scope": switch,
+            drawn.append({"file": name, "title": chart_title, "scope": switch,
                           "wide": True})
             number = number + 1
     return drawn

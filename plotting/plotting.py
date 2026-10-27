@@ -52,14 +52,14 @@ class Plots:
                 axes.axhline(limit, color=self.style["LIMIT_COLOR"], linestyle="--")
 
     def _figsize(self, labels):
-        width = max(self.style["MIN_FIG_WIDTH_IN"], self.style["ENTRY_WIDTH_IN"] * len(labels))
+        width = max(self.style["MIN_FIG_WIDTH_IN"], self.style["WIDTH_PER_X_AXIS_ENTRY_IN"] * len(labels))
         label_lengths = []
         for s in labels:
             label_lengths.append(len(s))
         longest = max(label_lengths, default=0)
         grow = max(0, longest - self.style["FREE_LABEL_CHARS"]) * self.style["HEIGHT_PER_LABEL_CHAR_IN"]
         # if there are too many labels to fit horizontally, grow the height of the figure
-        if len(labels) > self.style["VERTICAL_LABEL_ENTRIES"]:
+        if len(labels) > self.style["VERTICAL_LABEL_X_AXIS_ENTRIES"]:
             height = self.style["MIN_FIG_HEIGHT_IN"] + grow
         else:
             height = self.style["MIN_FIG_HEIGHT_IN"]
@@ -68,7 +68,7 @@ class Plots:
     def _set_category_ticks(self, axes, labels):
         axes.set_xticks(range(1, len(labels) + 1))
         # rotate labels if there are too many to fit horizontally
-        vertical = len(labels) > self.style["VERTICAL_LABEL_ENTRIES"]
+        vertical = len(labels) > self.style["VERTICAL_LABEL_X_AXIS_ENTRIES"]
         if vertical:
             rotation = 90
         else:

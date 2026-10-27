@@ -1,14 +1,18 @@
 DPI: 150
 
-# charts are made for slides: a 64-entry page lands near the 12.6in a slide
-# gives it, so labels are not shrunk into a smear on the way in
-ENTRY_WIDTH_IN: 0.18
+# A rotated 34-char label needs ~2in of height, so the figure cannot be short. Width
+# is the only free dimension left: 22.4in at the 64 cap gives the ~3.4:1 shape that
+# fills the deck's 12.6 x 4.9in slot instead of being letterboxed inside it.
+#
+#   width  = entries x WIDTH_PER_X_AXIS_ENTRY_IN     22.4in at the 64 cap
+#   height = MIN_FIG_HEIGHT_IN + label growth        6.0 - 7.4in
+WIDTH_PER_X_AXIS_ENTRY_IN: 0.35
 MIN_FIG_WIDTH_IN: 8.0
 MIN_FIG_HEIGHT_IN: 6.0
-HEIGHT_PER_LABEL_CHAR_IN: 0.045   # 90° labels need vertical room
-FREE_LABEL_CHARS: 20             # chars before height grows
-VERTICAL_LABEL_ENTRIES: 20       # above this, labels rotate 90° not 45°
-MAX_ENTRIES_PER_PAGE: 64
+HEIGHT_PER_LABEL_CHAR_IN: 0.045         # 90° labels need vertical room
+FREE_LABEL_CHARS: 20                    # chars before height grows
+VERTICAL_LABEL_X_AXIS_ENTRIES: 20       # above this, labels rotate 90° not 45°
+MAX_X_AXIS_ENTRIES_PER_CHART: 64        # x-axis entries on one chart before it is split into more
 
 VALUE_CMAP: "turbo"
 DEFAULT_COLOR: "#4472C4"
