@@ -30,11 +30,9 @@ GRID_CELLS = ((0.35, 0.97, 1.24, 5.9, 2.25), (6.85, 0.97, 1.24, 5.9, 2.25),
               (0.35, 3.71, 3.98, 5.9, 2.25), (6.85, 3.71, 3.98, 5.9, 2.25))
 # one chart gets the whole slide rather than a lonely quarter of it
 SINGLE_CELL = ((0.35, 0.97, 1.30, 12.6, 4.90),)
+# two share the slide's full width, one above the other, on the grid's own two rows
+STACKED_CELLS = ((0.35, 0.97, 1.24, 12.6, 2.25), (0.35, 3.71, 3.98, 12.6, 2.25))
 PER_SLIDE = len(GRID_CELLS)
-# a chart with a long category axis is nearly twice as wide as it is tall, so two of
-# them cannot stack without the height squeezing each down to a third of the slide.
-# One per slide keeps the per-interconnect labels readable.
-WIDE_PER_SLIDE = 1
 
 RULE_COLOUR = RGBColor(0x7F, 0x7F, 0x7F)
 
@@ -113,22 +111,20 @@ def add_section_slide(presentation, text):
     return slide
 
 
-def _is_wide(charts):
-    for chart in charts:
-        if not chart.get("wide"):
-            return False
-    return True
+def cells_for(count):
+    """Charts get the room left over once they are sharing a slide, not a fixed size."""
+    if count == 1:
+        return SINGLE_CELL
+    if count == 2:
+        return STACKED_CELLS
+    return GRID_CELLS
 
 
 def add_chart_slide(presentation, heading, charts, charts_dir):
     slide = _blank_slide(presentation)
     _add_text(slide, HEADING, heading, 16, bold=True)
     _add_rule(slide)
-    if len(charts) == 1 or _is_wide(charts):
-        cells = SINGLE_CELL
-    else:
-        cells = GRID_CELLS
-    for chart, cell in zip(charts, cells):
+    for chart, cell in zip(charts, cells_for(len(charts))):
         _place_chart(slide, chart, cell, charts_dir)
     return slide
 
@@ -143,6 +139,21 @@ def group_by_scope(charts):
     return groups
 
 
+def group_by_metric(charts):
+    """[(metric, charts)] - a slide holds one metric, so its charts are comparable.
+
+    A manifest with no metric field is one undifferentiated group, which is how decks
+    built before the field existed keep laying out the way they used to.
+    """
+    groups = []
+    for chart in charts:
+        metric = chart.get("metric")
+        if not groups or groups[-1][0] != metric:
+            groups.append((metric, []))
+        groups[-1][1].append(chart)
+    return groups
+
+
 def paginate(items, size):
     pages = []
     for start in range(0, len(items), size):
@@ -150,40 +161,47 @@ def paginate(items, size):
     return pages
 
 
-def _heading_for(scope, page_number, page_count):
+def slide_plan(charts):
+    """[(metric, number, count, charts)] - one entry per slide, in order.
+
+    A metric that produced several charts gets slides of its own, so its pages sit
+    together and can be read against each other. Metrics that produced a single chart
+    are packed onto a shared slide first: one chart does not earn a slide, and four
+    unrelated ones still describe the same switch.
+    """
+    singles = []
+    runs = []
+    for metric, of_metric in group_by_metric(charts):
+        if len(of_metric) == 1:
+            singles.extend(of_metric)
+        else:
+            runs.append((metric, of_metric))
+
+    plan = []
+    pages = paginate(singles, PER_SLIDE)
+    number = 1
+    for page in pages:
+        plan.append((None, number, len(pages), page))
+        number = number + 1
+    for metric, of_metric in runs:
+        pages = paginate(of_metric, PER_SLIDE)
+        number = 1
+        for page in pages:
+            plan.append((metric, number, len(pages), page))
+            number = number + 1
+    return plan
+
+
+def _heading_for(scope, metric, page_number, page_count):
     if scope == "all":
         heading = "Across all switches"
     else:
         heading = f"Switch {scope}"
+    if metric:
+        heading = f"{heading} — {metric}"
     if page_count > 1:
         heading = f"{heading} (page {page_number} of {page_count})"
     return heading
-
-
-def layout_runs(charts):
-    """Consecutive charts sharing a layout - wide ones take a slide each, others four.
-
-    A switch's charts are its interconnect pages (wide) followed by its temperature
-    chart (not), so one group can need both layouts.
-    """
-    runs = []
-    for chart in charts:
-        wide = bool(chart.get("wide"))
-        if not runs or runs[-1][0] != wide:
-            runs.append((wide, []))
-        runs[-1][1].append(chart)
-    return runs
-
-
-def _slide_pages(charts):
-    pages = []
-    for wide, run in layout_runs(charts):
-        if wide:
-            per_slide = WIDE_PER_SLIDE
-        else:
-            per_slide = PER_SLIDE
-        pages.extend(paginate(run, per_slide))
-    return pages
 
 
 def add_testcase(presentation, manifest, charts_dir):
@@ -197,9 +215,8 @@ def add_testcase(presentation, manifest, charts_dir):
     add_section_slide(presentation, f"{name} Plots")
     slides = 1
     for scope, charts in group_by_scope(manifest["charts"]):
-        pages = _slide_pages(charts)
-        for number, page in enumerate(pages, start=1):
-            add_chart_slide(presentation, _heading_for(scope, number, len(pages)),
+        for metric, number, count, page in slide_plan(charts):
+            add_chart_slide(presentation, _heading_for(scope, metric, number, count),
                             page, charts_dir)
             slides = slides + 1
     return slides

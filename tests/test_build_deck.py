@@ -17,7 +17,10 @@ from build_deck import (
     GRID_CELLS,
     PER_SLIDE,
     SINGLE_CELL,
+    STACKED_CELLS,
     build_deck,
+    cells_for,
+    group_by_metric,
     group_by_scope,
     paginate,
     _fit,
@@ -27,8 +30,11 @@ from build_deck import (
 PICTURE = 13  # MSO_SHAPE_TYPE.PICTURE
 
 
-def chart(name, scope, title=None):
-    return {"file": name, "title": title or name, "scope": scope}
+def chart(name, scope, title=None, metric=None):
+    entry = {"file": name, "title": title or name, "scope": scope}
+    if metric is not None:
+        entry["metric"] = metric
+    return entry
 
 
 def write_manifest(folder, charts, test_type="soak", sizes=None):
@@ -69,10 +75,31 @@ assert paginate([], 4) == []
 assert paginate([1], 4) == [[1]]
 print("ok  paginate: splits on the grid size, no empty trailing page")
 
-assert _heading_for("all", 1, 1) == "Across all switches"
-assert _heading_for("0", 1, 1) == "Switch 0"
-assert _heading_for("0", 2, 3) == "Switch 0 (page 2 of 3)"
-print("ok  _heading_for: page numbers only when there is more than one page")
+assert _heading_for("all", None, 1, 1) == "Across all switches"
+assert _heading_for("0", None, 1, 1) == "Switch 0"
+assert _heading_for("0", "Pre-FEC BER", 1, 1) == "Switch 0 — Pre-FEC BER"
+assert _heading_for("0", "Pre-FEC BER", 2, 3) == "Switch 0 — Pre-FEC BER (page 2 of 3)"
+print("ok  _heading_for: names the metric, pages only when there is more than one")
+
+
+# --- a slide holds one metric, and its charts share the room ---------------------
+
+groups = group_by_metric([chart("a.png", "0", metric="BER"),
+                          chart("b.png", "0", metric="BER"),
+                          chart("c.png", "0", metric="T-Code")])
+assert [m for m, _ in groups] == ["BER", "T-Code"], groups
+assert len(groups[0][1]) == 2
+print("ok  group_by_metric: consecutive charts of one metric share a slide")
+
+groups = group_by_metric([chart("a.png", "0"), chart("b.png", "0")])
+assert len(groups) == 1 and groups[0][0] is None,     "a manifest with no metric field must stay one group, as it laid out before"
+print("ok  group_by_metric: a manifest without the field is unchanged")
+
+assert cells_for(1) is SINGLE_CELL
+assert cells_for(2) is STACKED_CELLS
+assert cells_for(3) is GRID_CELLS and cells_for(4) is GRID_CELLS
+assert STACKED_CELLS[0][3] > GRID_CELLS[0][3], "two stacked charts keep the full width"
+print("ok  cells_for: room per chart follows how many are sharing the slide")
 
 
 # --- pictures are fitted, never stretched ----------------------------------------

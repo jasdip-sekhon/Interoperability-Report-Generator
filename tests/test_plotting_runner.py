@@ -13,9 +13,11 @@ from plotting_runner import (
     _lane_scalars,
     _lane_values,
     _sensor_points,
+    _temp_readings_per_port,
     _temps_per_port,
     _topology_key,
     build_interconnect_axis,
+    build_port_vendors,
     build_switch_axis,
 )
 
@@ -121,6 +123,25 @@ sensors = _sensor_points([{"switch": "0", "points": [[0.0, 20.0], [24.0, 30.0]]}
 assert len(sensors) == 3, "the sensor line breaks at the seam too"
 assert _sensor_points([], "0", []) is None, "a switch with no sensor has no line"
 print("ok  temps and sensors both break at the seam")
+
+# the box plot reads the same records but must not see the seam NaNs - one NaN makes
+# every quartile of a box NaN, so it reshapes from the raw points instead.
+readings = _temp_readings_per_port(records, "0")
+assert readings == {1: [40.0, 55.0]}, readings
+for value in readings[1]:
+    assert value == value, "a reading that is NaN would poison the whole box"
+assert _temp_readings_per_port(None, "0") == {}, "a capture with no temps draws nothing"
+assert _temp_readings_per_port(records, "9") == {}, "another switch's ports are not mixed in"
+print("ok  _temp_readings_per_port: timestamps dropped, no seam NaNs, one switch only")
+
+# the per-port chart labels ports by the optic in them, which only the topology knows
+topo = [dict(topology("SW0", "1-1"), **{"Rx Vendor": "NWB"}),
+        dict(topology("SW0", "1-4"), **{"Rx Vendor": "NWB"}),
+        dict(topology("SW0", "2-1"), **{"Rx Vendor": "NWS"})]
+vendors = build_port_vendors(topo)
+assert vendors == {("0", 1): "NWB", ("0", 2): "NWS"}, vendors
+assert ("0", 9) not in vendors, "a port with no topology entry falls back to 'port N'"
+print("ok  build_port_vendors: one optic per port, every lane of it agreeing")
 
 
 # --- a measurement with no topology entry must not be silently charted -----------

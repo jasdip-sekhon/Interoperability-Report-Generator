@@ -96,6 +96,15 @@ def build_switch_axis(interconnects):
     return keys, labels
 
 
+def build_port_vendors(interconnects):
+    """{(switch, port): vendor} - one optic per port, so every lane of it agrees."""
+    vendors = {}
+    for record in interconnects:
+        switch, port, lane = _topology_key(record)
+        vendors[(switch, port)] = record["Rx Vendor"]
+    return vendors
+
+
 def _axis_order(key):
     switch, port, lane = key
     return (str(switch), port, lane)
@@ -177,7 +186,7 @@ def _chunks(keys, labels):
     return chunks
 
 
-def _draw_per_switch(draw, values, keys, labels, stem, title, ylabel, out_dir):
+def _draw_per_switch(draw, values, keys, labels, stem, metric, title, ylabel, out_dir):
     """One chart per switch, split again when a switch has more lanes than fit on an axis.
 
     A split chart is numbered "(2 of 4)" with no noun. The deck heading above it already
@@ -197,7 +206,7 @@ def _draw_per_switch(draw, values, keys, labels, stem, title, ylabel, out_dir):
             draw(values, chunk_keys, chunk_labels, title=chart_title, ylabel=ylabel,
                  out_path=output_path(name, out_dir))
             drawn.append({"file": name, "title": chart_title, "scope": switch,
-                          "wide": True})
+                          "metric": metric})
             number = number + 1
     return drawn
 
@@ -224,7 +233,8 @@ def draw_flaps_by_switch(measurements, keys, labels, out_dir):
     plots.bargraph(_totals_per_switch(records), keys, labels,
                    title=title, ylabel="Flaps",
                    out_path=output_path("flaps.png", out_dir))
-    return [{"file": "flaps.png", "title": title, "scope": "all"}]
+    return [{"file": "flaps.png", "title": title, "scope": "all",
+             "metric": "Link flaps by switch"}]
 
 
 # --- flaps on the interconnect axis ----------------------------------------------
@@ -247,7 +257,7 @@ def draw_flaps_by_interconnect(measurements, keys, labels, out_dir):
     values = _lane_scalars(records, "count")
     _report_unmatched(keys, values, "link flap")
     return _draw_per_switch(plots.bargraph, values, keys, labels,
-                            stem="link_flap_bar",
+                            stem="link_flap_bar", metric="Link flap count",
                             title="Link flap count by interconnect",
                             ylabel="Flaps", out_dir=out_dir)
 
@@ -284,7 +294,7 @@ def draw_ber(measurements, meta, keys, labels, out_dir):
     values = _lane_values(records, drop_at_or_above=SATURATED_BER)
     _report_unmatched(keys, values, "BER")
     return _draw_per_switch(plots.box_plot, values, keys, labels,
-                            stem="pre_fec_ber_box",
+                            stem="pre_fec_ber_box", metric="Pre-FEC BER",
                             title=f"Pre-FEC BER by interconnect ({meta['ber_source']})",
                             ylabel="Pre-FEC BER", out_dir=out_dir)
 
@@ -296,7 +306,7 @@ def draw_tcode(measurements, keys, labels, out_dir):
     values = _lane_values(records)
     _report_unmatched(keys, values, "T-Code")
     return _draw_per_switch(plots.dot_plot, values, keys, labels,
-                            stem="tcode_dot",
+                            stem="tcode_dot", metric="T-Code",
                             title="T-Code by interconnect",
                             ylabel="T-Code", out_dir=out_dir)
 
@@ -308,7 +318,7 @@ def draw_uncorrected_cw(measurements, keys, labels, out_dir):
     values = _lane_values(records)
     _report_unmatched(keys, values, "uncorrected codeword")
     return _draw_per_switch(plots.dot_plot, values, keys, labels,
-                            stem="uncorrected_cw_dot",
+                            stem="uncorrected_cw_dot", metric="Uncorrected codewords",
                             title="Uncorrected codewords by interconnect",
                             ylabel="Uncorrected codewords", out_dir=out_dir)
 
@@ -320,7 +330,7 @@ def draw_link_up(measurements, keys, labels, out_dir):
     values = _lane_values(records)
     _report_unmatched(keys, values, "link-up")
     return _draw_per_switch(plots.dot_plot, values, keys, labels,
-                            stem="link_up_dot",
+                            stem="link_up_dot", metric="Link-up time",
                             title="Link-up time by interconnect",
                             ylabel="Seconds", out_dir=out_dir)
 
@@ -370,6 +380,17 @@ def _sensor_points(records, switch, seams):
     return None
 
 
+def _switch_info(meta, switch):
+    """(limits, model) for one switch. Both missing is normal for an unknown device."""
+    info = meta["switches"].get(switch)
+    if info is None:
+        info = {}
+    model = info.get("device_model")
+    if model is None:
+        model = "unknown"
+    return info, model
+
+
 def _report_flat_series(switch, temps):
     # a line needs 2+ samples; warn when it'll render as scattered points instead
     longest = 0
@@ -398,12 +419,7 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
         labels = []
         for port in ports:
             labels.append(f"port {port}")
-        info = meta["switches"].get(switch)
-        if info is None:
-            info = {}
-        model = info.get("device_model")
-        if model is None:
-            model = "unknown"
+        info, model = _switch_info(meta, switch)
         name = f"temp_switch_{switch}.png"
         title = f"Module temperature over time — switch {switch} ({model})"
         plots.value_series(temps, ports, labels,
@@ -416,7 +432,63 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
                            overlay_points=_sensor_points(measurements["sensors"],
                                                          switch, seams),
                            overlay_label=SENSOR_LABEL)
-        drawn.append({"file": name, "title": title, "scope": switch})
+        drawn.append({"file": name, "title": title, "scope": switch,
+                      "metric": "Module temperature over time"})
+    return drawn
+
+
+# --- temperature per port, the same readings on a category axis ------------------
+
+def _temp_readings_per_port(records, switch):
+    """One switch's module temperatures -> {port: [celsius]}, timestamps dropped.
+
+    Deliberately not _temps_per_port: that one inserts NaN at run seams so the line
+    chart breaks, and one NaN makes every quartile of a box NaN.
+    """
+    if records is None:
+        return {}
+    readings = {}
+    for record in records:
+        if record["switch"] != switch:
+            continue
+        values = []
+        for hours, value in record["points"]:
+            if value is not None:
+                values.append(value)
+        readings[record["port"]] = values
+    return readings
+
+
+def draw_temperature_per_port(measurements, meta, keys, vendors, out_dir):
+    """One chart per switch: a box per port spanning the range that port ran through.
+
+    Soak cycles hot and cold, so a box here is bimodal - it stretches from the cold
+    mode to the hot one rather than describing a spread around a middle.
+    """
+    drawn = []
+    for switch in keys:
+        readings = _temp_readings_per_port(measurements["temps"], switch)
+        if not readings:
+            continue
+        ports = sorted(readings)
+        labels = []
+        for port in ports:
+            vendor = vendors.get((switch, port))
+            if vendor is None:
+                labels.append(f"port {port}")
+            else:
+                labels.append(f"{port}_{vendor}")
+        info, model = _switch_info(meta, switch)
+        name = f"temp_per_port_sw{switch}.png"
+        title = f"Module temperature per port — switch {switch} ({model})"
+        plots.box_plot(readings, ports, labels,
+                       title=title,
+                       ylabel="Temperature (°C)",
+                       out_path=output_path(name, out_dir),
+                       spec_min=info.get("temp_min"),
+                       spec_max=info.get("temp_max"))
+        drawn.append({"file": name, "title": title, "scope": switch,
+                      "metric": "Module temperature per port"})
     return drawn
 
 
@@ -478,11 +550,13 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         interconnects = load_yaml(interconnects_yml)
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
+        vendors = build_port_vendors(interconnects)
     else:
         print("  Info: no topology file; labelling the x axis from the measurements "
               "themselves, so entries are named rather than described.")
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)
+        vendors = {}
 
     seams = meta.get("seams")
     if seams is None:
@@ -502,6 +576,8 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
     charts.extend(draw_uncorrected_cw(measurements, keys, labels, out_dir))
     charts.extend(draw_link_up(measurements, keys, labels, out_dir))
     charts.extend(draw_temperature_over_time(measurements, meta, switch_keys, seams, out_dir))
+    charts.extend(draw_temperature_per_port(measurements, meta, switch_keys, vendors,
+                                            out_dir))
 
     return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir, testcase)
 
