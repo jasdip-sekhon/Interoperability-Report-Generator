@@ -10,6 +10,7 @@ import argparse
 import sys
 
 import yaml
+from openpyxl import load_workbook
 
 PROJECT_ROOT = Path(__file__).parent
 # the stages are sibling scripts rather than a package, so they import each other by
@@ -31,6 +32,73 @@ OUTPUT_DIR = PROJECT_ROOT / "output"
 def load_config(path):
     with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+# the sheets the converter reads. A topology workbook has none of them, and a folder
+# of captures usually has the topology sitting right next to them.
+CAPTURE_SHEETS = ("log", "get_link_flap", "get_module_info", "get_switch_sensor",
+                  "get_fec_counter")
+
+
+def is_capture(path):
+    """Whether this workbook holds measurements, by the sheets it carries."""
+    workbook = load_workbook(path, read_only=True)
+    names = workbook.sheetnames
+    workbook.close()
+    for name in names:
+        for sheet in CAPTURE_SHEETS:
+            if name.endswith(sheet):
+                return True
+    return False
+
+
+def config_for(target):
+    """A config from whatever the user pointed at, so a one-off run needs no run.yml.
+
+    A .yml is a run config. Anything else is captures: one spreadsheet, or a folder of
+    them, each charted as its own testcase.
+
+    Nothing is paired here, and that is the point. A config file exists because a DUT
+    run and a Ref run cannot be told apart by filename - the real captures spell one
+    testcase 'lane1-1' and 'ln1-1', another 'lan2-8' and 'lane2-8' - and a wrong
+    pairing is silent, because a bad merge still makes a plausible deck. Charting each
+    capture on its own is what the deck shows either way; only the merged yaml, which
+    nothing charts, is lost.
+    """
+    target = Path(target)
+    if target.suffix.lower() in (".yml", ".yaml"):
+        return load_config(target)
+
+    if target.is_dir():
+        captures = []
+        skipped = []
+        for path in sorted(target.glob("*.xlsx")):
+            if is_capture(path):
+                captures.append(path)
+            else:
+                skipped.append(path.name)
+        if skipped:
+            print(f"== config == skipping {', '.join(skipped)}: no measurement sheets, "
+                  f"so not a capture")
+        if not captures:
+            raise SystemExit(f"no captures in {target}")
+        report = target.name
+    elif target.exists():
+        if not is_capture(target):
+            raise SystemExit(f"{target.name} has no measurement sheets; it is not a "
+                             f"capture. Pass a topology with --topology.")
+        captures = [target]
+        report = target.stem
+    else:
+        raise SystemExit(f"no such file or folder: {target}")
+
+    testcases = []
+    for capture in captures:
+        testcases.append({"name": capture.stem,
+                          "captures": [str(capture.resolve())]})
+    print(f"== config == none given; charting {len(testcases)} capture(s) from "
+          f"{target}, each on its own")
+    return {"report": report, "testcases": testcases}
 
 
 def _slug(name):
@@ -94,14 +162,15 @@ def prepare_measurements(testcase):
     return converted
 
 
-def run(config_path):
-    config = load_config(config_path)
+def run(target, topology=None):
+    config = config_for(target)
     report = config.get("report", "Report")
     MEASUREMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # a rack without a topology in the format we read still charts, just with plainer
     # x-axis labels taken from the measurements
-    topology = config.get("topology")
+    if topology is None:
+        topology = config.get("topology")
     if topology:
         print("== topology ==")
         interconnects_to_yml(_resolve(topology), INTERCONNECTS_YML)
@@ -119,7 +188,8 @@ def run(config_path):
                 name = f"{name} {label}"
             charts_dir = OUTPUT_DIR / _slug(name)
             manifests.append(generate_plots(measurements, charts_dir,
-                                            interconnects_yml, name))
+                                            interconnects_yml, name,
+                                            testcase.get("metrics")))
 
     print("== deck ==")
     deck_path = OUTPUT_DIR / f"{_slug(report)}.pptx"
@@ -129,7 +199,11 @@ def run(config_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("config", nargs="?", default=PROJECT_ROOT / "run.yml",
-                        help="run config listing the captures (default: run.yml)")
+    parser.add_argument("target", nargs="?", default=PROJECT_ROOT / "run.yml",
+                        help="a run config, a capture .xlsx, or a folder of them "
+                             "(default: run.yml)")
+    parser.add_argument("-t", "--topology",
+                        help="topology .xlsx for x-axis labels; without one the labels "
+                             "come from the measurements themselves")
     args = parser.parse_args()
-    run(args.config)
+    run(args.target, args.topology)

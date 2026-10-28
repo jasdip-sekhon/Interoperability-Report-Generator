@@ -1,46 +1,6 @@
 # Interoperability Report Generator
 
-Turns switch/optics test captures into a slide deck: read the raw data, render charts to a
-folder, then build the deck from that folder.
-
-Early days — only `plotting/` has working code.
-
-## Layout
-
-```
-main.py                  runs the whole pipeline
-run.yml                  which captures one report covers
-data/
-  data_to_yml.py         one capture xlsx -> one measurement yaml
-  merge_runs.py          several of those yaml -> one, for a testcase captured twice
-  output/                the generated measurement yaml
-interconnects/           topology xlsx -> yaml (x-axis labels)
-plotting/
-  plotting.py            the chart library — data in, PNG out
-  plotting_runner.py     builds every chart for one capture
-  plotting_style.yaml    colours, sizing, DPI
-deck/
-  build_deck.py          manifest + PNGs -> pptx
-output/                  the deck, plus one folder of charts per testcase
-  <testcase>/            its PNGs and manifest.yml — wiped by the runner, not tracked
-tests/                   every test_*.py, run via tests/run_all.py
-references/              redacted sample captures used as fixtures
-```
-
-`plotting.py` knows nothing about switches or interconnects — it takes `data`, `keys`,
-`labels` and draws. Everything domain-specific lives in `plotting_runner.py`.
-
-That boundary is enforced, not just intended: `test_library_is_generic.py` fails if
-`plotting.py` imports anything from this project or so much as names a switch, a lane or
-a BER. It is meant to be liftable into another project along with `plotting_style.yaml`,
-which is why a chart method is called `value_series` rather than `temp_time_series`.
-
-Rendering and deck building are joined by a folder of PNGs, not a function call, so charts
-can be inspected without building a deck and the deck can be rebuilt without re-rendering.
-
-A reset testcase is captured twice, DUT-run and Ref-run, and **neither file is
-authoritative** — charting one alone silently drops whatever the other saw. Merge them
-before plotting. Soak is a single capture and needs no merge.
+Turns switch/optics test captures into a PowerPoint deck of charts.
 
 ## Setup
 
@@ -54,64 +14,84 @@ pip install -r requirements.txt
 
 On macOS/Linux the activation line is `source .venv/bin/activate`.
 
-## Running
+## Make a report
+
+**1. Create a config file** for your report — see [The config](#the-config). Copying an
+existing `run_*.yml` and changing the paths is the quickest start.
+
+**2. Run it:**
 
 ```bash
-python main.py            # the whole pipeline, per run.yml
+python main.py run_myrack.yml
 ```
 
-`run.yml` lists what one report covers: the topology file and each testcase's captures.
-A testcase with two captures (a reset is run twice, DUT and Ref) is merged before
-plotting. Each testcase renders into `output/<testcase>/`, and the deck gets a section
-per testcase.
+It prints progress as it goes; a full report can take up to an hour.
 
-The stages also run on their own, which is how you iterate on one of them:
+**3. Open the deck** named on the last line, in `output/`.
+
+`python main.py` with no arguments runs the samples in `references/` in ten seconds —
+use it to check the install.
+
+## The config
+
+One text file per report, saved as `run_<name>.yml`. It is written by hand because
+filenames do not say which captures pair, and no spreadsheet says what its test measured.
+
+Paths use forward slashes, even on Windows.
+
+```yaml
+report: R12-TB1
+topology: C:/data/R12_TB1_Tx_Rx_Interconnects.xlsx
+
+testcases:
+  - name: Soak
+    metrics: [ber, tcode, uncorrected_cw, temps]
+    captures:
+      - C:/data/R12-TB1-Traffic_Soak_20260816.xlsx
+
+  - name: Reset
+    metrics: [flaps, ber, link_up, temps]
+    recovery_commanded: true
+    captures:
+      - label: DUT
+        file: C:/data/R12-TB1-Reset_DUT_20260717.xlsx
+      - label: Ref
+        file: C:/data/R12-TB1-Reset_Ref_20260718.xlsx
+```
+
+| setting | what it does | needed? |
+|---|---|---|
+| `report` | names the deck, e.g. `output/r12-tb1.pptx` | yes |
+| `topology` | the Tx/Rx interconnects spreadsheet, for real x-axis labels | no |
+| `name` | the section heading in the deck | yes |
+| `captures` | the test spreadsheets for that testcase | yes |
+| `label` | `DUT` or `Ref`, when one testcase was run twice | no |
+| `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `uncorrected_cw`, `link_up`, `temps`. Omit to chart all | no |
+| `recovery_commanded` | `true` if this test tells links to come back up | no |
+
+## Without a config
+
+To look at captures without writing a config, point at a file or a folder:
 
 ```bash
-python data/data_to_yml.py                   # captures -> measurement yaml
-python interconnects/interconnects_to_yml.py # topology -> label yaml
-
-python data/merge_runs.py data/output/reset_dut_sample.yml \
-                          data/output/reset_ref_sample.yml \
-                       -o data/output/reset_merged.yml
-
-python plotting/plotting_runner.py data/output/soak_sample.yml
-python deck/build_deck.py output/manifest.yml -o output/report.pptx
+python main.py capture.xlsx
+python main.py path/to/Data_Files -t path/to/topology.xlsx
 ```
 
-The runner writes `output/manifest.yml` alongside the charts, declaring each one's file,
-caption and scope in presentation order. The deck builder reads only that, so it never
-learns what a metric is — a chart type added upstream appears in the deck with no change
-to `deck/`. It renders one capture at a time, because the runner clears `output/` first.
+Every spreadsheet becomes its own section, named after the file. You lose the chosen
+names and the `metrics` subset, but still get a full deck.
 
-The converters read `references/` and are only rerun when a capture changes; the charts
-read their yaml, never the spreadsheets. Both print what they skipped and why — a missing
-sheet, a saturated reading, a lane with no topology entry — so a thin chart has a stated
-reason rather than being silently thin.
+## Where things end up
 
-## Tests
-
-Every test is a standalone script (asserts, not a framework) and lives in `tests/`,
-regardless of which stage it covers — a test importing its module by bare name is what
-`tests/_bootstrap.py` sets up, the same sys.path trick `main.py` uses to let the stages
-import each other.
-
-```bash
-python tests/run_all.py                    # everything, one command
-
-python tests/test_data_to_yml.py           # parsers, against synthetic records
-python tests/test_merge_runs.py            # the per-field merge rules
-python tests/test_plotting_runner.py       # the topology/measurement join
-python tests/test_plotting.py              # renders one of each chart type
-python tests/test_library_is_generic.py    # plotting.py stays domain-free
-python tests/test_build_deck.py            # slide layout and manifest handling
+```
+output/<report>.pptx       the deck
+output/<testcase>/         that testcase's charts as PNGs, so one can be checked alone
+data/output/               the measurements pulled out of each spreadsheet
 ```
 
-The fixtures hold one reading per lane, so the grouping, merging and seam logic are
-covered synthetically rather than by running against `references/`.
+If a chart looks wrong, open its PNG directly rather than hunting through the deck.
 
-## Data
+## For developers
 
-Real captures contain customer data and are not tracked. The only spreadsheets in the repo
-are the redacted `references/*_sample.xlsx` fixtures — see
-[`references/README.md`](references/README.md).
+How the stages fit together, how to run one on its own, and the tests:
+[`ARCHITECTURE.md`](ARCHITECTURE.md).

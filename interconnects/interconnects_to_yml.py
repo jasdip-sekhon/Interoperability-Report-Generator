@@ -35,7 +35,11 @@ def interconnects_to_yml(interconnects_file, output_yml):
                 record[header] = row[i]
         interconnects.append(record)
 
+    # one shared yaml serves whichever report ran last, so stamp which workbook it
+    # came from: charting a rack against another rack's axis is otherwise only
+    # visible as every interconnect going unmatched
     with open(output_yml, 'w') as f:
+        f.write("# source: " + str(Path(interconnects_file).resolve()) + "\n")
         yaml.dump(interconnects, f, default_flow_style=False, sort_keys=False)
 
     return interconnects

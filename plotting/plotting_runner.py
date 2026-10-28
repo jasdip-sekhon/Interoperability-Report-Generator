@@ -36,6 +36,10 @@ MEASUREMENTS_DIR = PROJECT_ROOT / "data" / "output"
 MANIFEST_NAME = "manifest.yml"
 SATURATED_BER = 0.5  # BER >= 0.5 is the counter saturating, not a real reading
 SENSOR_LABEL = "Board Sensor"
+# what a testcase can ask for, named after the measurement yaml's own sections. A test
+# that deliberately breaks links measures recovery, not bit errors, so charting every
+# metric everywhere fills the deck with charts of a quantity the test was not watching.
+METRICS = ("flaps", "ber", "tcode", "uncorrected_cw", "link_up", "temps")
 
 plots = Plots()
 
@@ -73,6 +77,15 @@ def _topology_key(record):
         switch = switch[2:]
     port, _, lane = str(record["Rx Port-Lane"]).partition("-")
     return switch, int(port), int(lane)
+
+
+def topology_source(path):
+    """The workbook this yaml was built from, stamped by the converter."""
+    with open(path, encoding="utf-8") as f:
+        first = f.readline()
+    if first.startswith("# source:"):
+        return first[len("# source:"):].strip()
+    return "unknown workbook"
 
 
 def build_interconnect_axis(interconnects):
@@ -538,8 +551,25 @@ def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
 
 # --- the pipeline ----------------------------------------------------------------
 
+def _wanted(metrics, name):
+    """Every metric unless the testcase named a subset."""
+    if metrics is None:
+        return True
+    return name in metrics
+
+
+def _report_unknown_metrics(metrics):
+    unknown = []
+    for name in metrics:
+        if name not in METRICS:
+            unknown.append(name)
+    if unknown:
+        print(f"  Warning: configured metric(s) {', '.join(unknown)} are not drawn by "
+              f"anything; known metrics are {', '.join(METRICS)}.")
+
+
 def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YML,
-                   testcase=None):
+                   testcase=None, metrics=None):
     measurements = load_yaml(measurements_yml)
     meta = measurements["meta"]
     print(f"{Path(measurements_yml).name} ({meta['test_type']}, BER from "
@@ -548,6 +578,8 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
 
     if interconnects_yml and Path(interconnects_yml).exists():
         interconnects = load_yaml(interconnects_yml)
+        print(f"  x axis from {topology_source(interconnects_yml)}, "
+              f"{len(interconnects)} interconnects")
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
         vendors = build_port_vendors(interconnects)
@@ -568,16 +600,28 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         print(f"  Info: merged capture; lines break at {len(seams)} run boundary "
               f"({', '.join(at)}) where nothing was measured.")
 
+    if metrics is not None:
+        _report_unknown_metrics(metrics)
+        print(f"  Charting {', '.join(metrics)}; this testcase measures nothing else.")
+
     charts = []
-    charts.extend(draw_flaps_by_switch(measurements, switch_keys, switch_labels, out_dir))
-    charts.extend(draw_flaps_by_interconnect(measurements, keys, labels, out_dir))
-    charts.extend(draw_ber(measurements, meta, keys, labels, out_dir))
-    charts.extend(draw_tcode(measurements, keys, labels, out_dir))
-    charts.extend(draw_uncorrected_cw(measurements, keys, labels, out_dir))
-    charts.extend(draw_link_up(measurements, keys, labels, out_dir))
-    charts.extend(draw_temperature_over_time(measurements, meta, switch_keys, seams, out_dir))
-    charts.extend(draw_temperature_per_port(measurements, meta, switch_keys, vendors,
-                                            out_dir))
+    if _wanted(metrics, "flaps"):
+        charts.extend(draw_flaps_by_switch(measurements, switch_keys, switch_labels,
+                                           out_dir))
+        charts.extend(draw_flaps_by_interconnect(measurements, keys, labels, out_dir))
+    if _wanted(metrics, "ber"):
+        charts.extend(draw_ber(measurements, meta, keys, labels, out_dir))
+    if _wanted(metrics, "tcode"):
+        charts.extend(draw_tcode(measurements, keys, labels, out_dir))
+    if _wanted(metrics, "uncorrected_cw"):
+        charts.extend(draw_uncorrected_cw(measurements, keys, labels, out_dir))
+    if _wanted(metrics, "link_up"):
+        charts.extend(draw_link_up(measurements, keys, labels, out_dir))
+    if _wanted(metrics, "temps"):
+        charts.extend(draw_temperature_over_time(measurements, meta, switch_keys, seams,
+                                                 out_dir))
+        charts.extend(draw_temperature_per_port(measurements, meta, switch_keys, vendors,
+                                                out_dir))
 
     return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir, testcase)
 

@@ -13,6 +13,9 @@ output/
 # Parsed captures — rebuilt from references/ by data/data_to_yml.py
 data/output/
 
+# One shared x-axis file, rewritten by whichever report ran last
+interconnects/interconnects.yml
+
 Data_Files/
 *.xlsx
 !references/*_sample.xlsx

@@ -10,10 +10,14 @@ topology: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Rack6_TB1_Tx_Rx_Inter
 
 testcases:
   - name: Soak
+    # a soak watches error rate over time; links are never taken down
+    metrics: [ber, tcode, uncorrected_cw, temps]
     captures:
       - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
 
   - name: Reset
+    # a reset is about how links come back, and whether they come back clean
+    metrics: [flaps, ber, link_up, temps]
     recovery_commanded: true
     captures:
       - label: DUT
@@ -22,6 +26,8 @@ testcases:
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop_R6TB1-DR8-reset-Ref_20260710_104300.xlsx
 
   - name: Shut No-Shut
+    # links are taken down on purpose, so BER saturates and says nothing
+    metrics: [flaps, link_up, temps]
     recovery_commanded: true
     captures:
       - label: DUT
@@ -30,6 +36,8 @@ testcases:
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
 
   - name: Lane 1-1
+    # one lane is shut; link-up is half empty and BER saturates
+    metrics: [flaps, temps]
     captures:
       - label: DUT
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
@@ -37,6 +45,8 @@ testcases:
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.xlsx
 
   - name: Lane 2-8
+    # as above
+    metrics: [flaps, temps]
     captures:
       - label: DUT
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
