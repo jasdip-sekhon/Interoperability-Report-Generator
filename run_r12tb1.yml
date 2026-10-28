@@ -1,0 +1,58 @@
+# R12-TB1, against the real captures rather than the redacted fixtures.
+#
+# Nine runs across five testcases. Each reset/shut testcase is captured twice - a
+# DUT run and a Ref run - and the two halves spell their testcase differently
+# ('Ln1-1-DUT' against 'Lane1_1_Ref'), which is why captures are listed rather than
+# discovered. Both halves are charted; the merge only produces the union yaml.
+#
+# Three Traffic_Soak captures exist; the reference deck names none of them, so the
+# most recent was chosen.
+
+report: R12-TB1
+
+topology: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/R12_TB1_Tx_Rx_Interconnects.xlsx
+
+testcases:
+  - name: Soak
+    # a soak watches error rate over time; links are never taken down
+    metrics: [ber, tcode, uncorrected_cw, temps]
+    captures:
+      - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-Traffic_Soak_20260816_032442.xlsx
+
+  - name: Reset
+    # a reset is about how links come back, and whether they come back clean
+    metrics: [flaps, ber, link_up, temps]
+    recovery_commanded: true
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-Reset_DUT_20260717_010454.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-Reset_Ref_20260718_180429.xlsx
+
+  - name: Shut No-Shut
+    # links are taken down on purpose, so BER saturates and says nothing
+    metrics: [flaps, link_up, temps]
+    recovery_commanded: true
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-ShutunShut_DUT_20260718_000913.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-ShutunShut_Ref_20260721_003911.xlsx
+
+  - name: Lane 1-1
+    # one lane is shut; the reference charts link-up here, unlike Rack6
+    metrics: [flaps, link_up, temps]
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-ShutunShut-Ln1-1-DUT_20260719_081525.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-ShutunShut_Lane1_1_Ref_20260730_001350.xlsx
+
+  - name: Lane 2-8
+    # as above
+    metrics: [flaps, link_up, temps]
+    captures:
+      - label: DUT
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-ShutunShut-Ln2-8-DUT_20260719_181617.xlsx
+      - label: Ref
+        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-Shut_unShut_Lane_2_8_Ref_20260730_185634.xlsx

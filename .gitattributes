@@ -1,0 +1,10 @@
+# Store text as LF; Git checks it out as CRLF on Windows. Without this the repo keeps
+# whatever endings a file was committed with, so any editor or script that rewrites
+# them produces a diff that changes nothing.
+* text=auto
+
+# Tracked spreadsheets are zip archives, and the sample decks are too - never let
+# line-ending conversion near them.
+*.xlsx binary
+*.pptx binary
+*.png binary
