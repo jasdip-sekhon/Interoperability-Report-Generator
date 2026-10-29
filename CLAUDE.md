@@ -7,6 +7,7 @@ User docs are [`README.md`](README.md); design is [`ARCHITECTURE.md`](ARCHITECTU
 main.py            sequences the four stages
 data/              capture xlsx -> measurement yaml, and the DUT/Ref merge
 interconnects/     topology xlsx -> interconnects.yml (x-axis labels)
+output/<report>/   one self-contained folder per report: deck, charts, x-axis labels
 plotting/          plotting.py (generic chart library) + plotting_runner.py (domain)
 deck/              manifest + PNGs -> pptx
 ```
@@ -70,7 +71,9 @@ becomes `0` while `4-33` and `Ixia` stay as they are.
 - **Test type comes from the config, not sheet detection.** Detection calls every
   non-reset capture a soak, which throws away the recovery signal.
 - Every render prints the topology it used. `x axis from ...fixture.xlsx, 35
-  interconnects` against real data means `interconnects.yml` is stale.
+  interconnects` against real data means the topology was built from the wrong file.
+  Each report writes its own copy under `output/<report>/`, so racks cannot collide;
+  `interconnects/interconnects.yml` remains only as the default for standalone runs.
 
 ## Conventions
 
@@ -91,8 +94,6 @@ editing programmatically - a changed ending is a diff that changes nothing.
 
 ## Known rough edges
 
-- `interconnects.yml` and `output/<testcase>/` are shared paths: running one report
-  invalidates another's. The `.pptx` files are safe, images are embedded.
 - No caching — every run reconverts every spreadsheet. A real report takes up to an
   hour; re-rendering from `data/output/*.yml` takes seconds.
 - `main.py` has no tests.

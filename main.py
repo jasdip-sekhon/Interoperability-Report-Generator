@@ -166,6 +166,10 @@ def run(target, topology=None):
     config = config_for(target)
     report = config.get("report", "Report")
     MEASUREMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    # everything one report produces lives under its own folder, so two racks cannot
+    # overwrite each other's charts - which cost a deck once, silently
+    report_dir = OUTPUT_DIR / _slug(report)
+    report_dir.mkdir(parents=True, exist_ok=True)
 
     # a rack without a topology in the format we read still charts, just with plainer
     # x-axis labels taken from the measurements
@@ -173,8 +177,8 @@ def run(target, topology=None):
         topology = config.get("topology")
     if topology:
         print("== topology ==")
-        interconnects_to_yml(_resolve(topology), INTERCONNECTS_YML)
-        interconnects_yml = INTERCONNECTS_YML
+        interconnects_yml = report_dir / INTERCONNECTS_YML.name
+        interconnects_to_yml(_resolve(topology), interconnects_yml)
     else:
         print("== topology == none configured; x axis comes from the measurements")
         interconnects_yml = None
@@ -186,13 +190,13 @@ def run(target, topology=None):
             name = testcase["name"]
             if label:
                 name = f"{name} {label}"
-            charts_dir = OUTPUT_DIR / _slug(name)
+            charts_dir = report_dir / _slug(name)
             manifests.append(generate_plots(measurements, charts_dir,
                                             interconnects_yml, name,
                                             testcase.get("metrics")))
 
     print("== deck ==")
-    deck_path = OUTPUT_DIR / f"{_slug(report)}.pptx"
+    deck_path = report_dir / f"{_slug(report)}.pptx"
     build_deck(manifests, deck_path, report)
     return deck_path
 

@@ -18,7 +18,9 @@ plotting/
   plotting_style.yaml    colours, sizing, DPI
 deck/
   build_deck.py          manifest + PNGs -> pptx
-output/                  the deck, plus one folder of charts per testcase
+output/<report>/         one folder per report: its deck, its x-axis labels, and one
+                         folder of charts per testcase. Reports cannot overwrite
+                         each other
   <testcase>/            its PNGs and manifest.yml — wiped by the runner, not tracked
 tests/                   every test_*.py, run via tests/run_all.py
 references/              redacted sample captures used as fixtures

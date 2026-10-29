@@ -84,9 +84,10 @@ names and the `metrics` subset, but still get a full deck.
 ## Where things end up
 
 ```
-output/<report>.pptx       the deck
-output/<testcase>/         that testcase's charts as PNGs, so one can be checked alone
-data/output/               the measurements pulled out of each spreadsheet
+output/<report>/<report>.pptx       the deck
+output/<report>/<testcase>/         that testcase's charts as PNGs, to check one alone
+output/<report>/interconnects.yml   the x-axis labels this report was built with
+data/output/                        the measurements pulled out of each spreadsheet
 ```
 
 If a chart looks wrong, open its PNG directly rather than hunting through the deck.
