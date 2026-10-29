@@ -164,6 +164,6 @@ print("all tests passed")
 assert _wanted(None, "ber"), "no configured subset means draw everything"
 assert _wanted(["flaps", "temps"], "flaps")
 assert not _wanted(["flaps", "temps"], "ber"),     "a lane-shut test breaks links on purpose, so its BER is saturation, not signal"
-for name in ("flaps", "ber", "tcode", "uncorrected_cw", "link_up", "temps"):
+for name in ("flaps", "ber", "tcode", "link_up", "temps"):
     assert name in METRICS, f"{name} is drawn but cannot be configured"
 print("ok  _wanted: every metric by default, only the named ones when configured")

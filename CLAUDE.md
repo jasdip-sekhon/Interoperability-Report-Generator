@@ -31,7 +31,7 @@ One `run_<name>.yml` per report. Schema is in README; the parts that need judgem
 
   | testcase | metrics |
   |---|---|
-  | Soak | `ber, tcode, uncorrected_cw, temps` |
+  | Soak | `ber, tcode, temps` |
   | Reset | `flaps, ber, link_up, temps` |
   | Shut No-Shut | `flaps, link_up, temps` |
   | Lane x-y | `flaps, temps` (Rack6) or `+ link_up` (R12) |
@@ -86,7 +86,8 @@ Every `draw_*` follows one recipe, stated in `plotting_runner.py`'s docstring: g
 reshape, report unmatched, draw, record. Adding a chart means adding a function, not a
 table row.
 
-Source files are **CRLF**. Preserve line endings when editing programmatically.
+Line endings are **LF**, normalised by `.gitattributes`. Do not rewrite them when
+editing programmatically - a changed ending is a diff that changes nothing.
 
 ## Known rough edges
 

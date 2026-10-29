@@ -45,7 +45,7 @@ topology: C:/data/R12_TB1_Tx_Rx_Interconnects.xlsx
 
 testcases:
   - name: Soak
-    metrics: [ber, tcode, uncorrected_cw, temps]
+    metrics: [ber, tcode, temps]
     captures:
       - C:/data/R12-TB1-Traffic_Soak_20260816.xlsx
 
@@ -66,7 +66,7 @@ testcases:
 | `name` | the section heading in the deck | yes |
 | `captures` | the test spreadsheets for that testcase | yes |
 | `label` | `DUT` or `Ref`, when one testcase was run twice | no |
-| `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `uncorrected_cw`, `link_up`, `temps`. Omit to chart all | no |
+| `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `link_up`, `temps`. Omit to chart all | no |
 | `recovery_commanded` | `true` if this test tells links to come back up | no |
 
 ## Without a config

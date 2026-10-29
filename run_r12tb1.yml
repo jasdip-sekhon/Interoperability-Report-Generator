@@ -15,7 +15,7 @@ topology: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/R12_TB1_Tx_Rx_Interco
 testcases:
   - name: Soak
     # a soak watches error rate over time; links are never taken down
-    metrics: [ber, tcode, uncorrected_cw, temps]
+    metrics: [ber, tcode, temps]
     captures:
       - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/R12-TB1-DR8DR4-Traffic_Soak_20260816_032442.xlsx
 

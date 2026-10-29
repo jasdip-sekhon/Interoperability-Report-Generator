@@ -46,6 +46,16 @@ class Plots:
             values.append(series)
         return values
 
+    def _set_log_scale(self, axes, series):
+        # values spanning orders of magnitude flatten to nothing on a linear axis. A log
+        # axis cannot place zero or a negative, so apply it only when something positive
+        # is there to show; the rest clip to the bottom of the axis.
+        for values in series:
+            for value in values:
+                if value is not None and value > 0:
+                    axes.set_yscale("log")
+                    return
+
     def _draw_limits(self, axes, spec_min, spec_max):
         for limit in (spec_min, spec_max):
             if limit is not None:
@@ -88,7 +98,7 @@ class Plots:
         plt.close(figure)
         return True
 
-    def bargraph(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
+    def bargraph(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=self._figsize(labels))
@@ -98,6 +108,8 @@ class Plots:
         if not colors:
             colors = [self.style["DEFAULT_COLOR"]] * len(keys)
         axes.bar(x, heights, color=colors)
+        if log:
+            self._set_log_scale(axes, [heights])
 
         # a zero-height bar draws nothing, which looks exactly like the gap left by a
         # key that was never measured. Mark the measured zeros so "counted, none found"
@@ -115,13 +127,15 @@ class Plots:
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)
         return self._finish(figure, out_path)
     
-    def box_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
+    def box_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=self._figsize(labels))
 
         values = self._process_samples(data, keys)
         boxplot = axes.boxplot(values, patch_artist=True)
+        if log:
+            self._set_log_scale(axes, values)
 
         self._set_category_ticks(axes, labels)
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)
@@ -134,12 +148,14 @@ class Plots:
             patch.set_facecolor(color)
         return self._finish(figure, out_path)
 
-    def dot_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None):
+    def dot_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=self._figsize(labels))
 
         samples = self._process_samples(data, keys)
+        if log:
+            self._set_log_scale(axes, samples)
         x = []
         y = []
         position = 1
