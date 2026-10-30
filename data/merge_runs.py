@@ -45,40 +45,71 @@ def _start_offsets(runs):
     return offsets
 
 
+def _refuse_mixed_ber_sources(runs, labels):
+    """The ASIC counter and the optic's own reading are different instruments; pooling
+    them would compare two measurements against one threshold."""
+    held = runs[0]["meta"]["ber_source"]
+    for i in range(1, len(runs)):
+        source = runs[i]["meta"]["ber_source"]
+        if source != held:
+            raise ValueError(
+                f"refusing to merge: {labels[0]} reports ber_source '{held}' but "
+                f"{labels[i]} reports '{source}'. These are different instruments "
+                "and must never be pooled.")
+
+
+def _refuse_mixed_test_types(runs, labels):
+    """A reset and a soak answer different questions; one chart cannot serve both."""
+    held = runs[0]["meta"]["test_type"]
+    for i in range(1, len(runs)):
+        test_type = runs[i]["meta"]["test_type"]
+        if test_type != held:
+            raise ValueError(
+                f"refusing to merge: {labels[0]} is a '{held}' capture but "
+                f"{labels[i]} is '{test_type}'.")
+
+
+def _fill_switch_gaps(held, info, switch, first_label, label):
+    """Take what the first run did not describe; warn where the two disagree."""
+    for field in info:
+        value = info[field]
+        if held[field] is None:
+            held[field] = value
+        elif value is not None and value != held[field]:
+            print(f"Warning: switch {switch} reports {field} '{held[field]}' in "
+                  f"{first_label} but '{value}' in {label}; keeping '{held[field]}'. "
+                  "The two runs may not be the same population.")
+
+
+def _union_switches(runs, labels):
+    """Every switch any run described, each filled in from whichever run knew it."""
+    switches = {}
+    for i in range(len(runs)):
+        described = runs[i]["meta"]["switches"]
+        if described is None:
+            described = {}
+        for switch in described:
+            if switch not in switches:
+                switches[switch] = dict(described[switch])
+            else:
+                _fill_switch_gaps(switches[switch], described[switch], switch,
+                                  labels[0], labels[i])
+    return switches
+
+
+def _earliest_start(runs):
+    starts = []
+    for run in runs:
+        starts.append(run["meta"]["start_time"])
+    return min(starts)
+
+
 def merge_meta(runs, labels):
     base = dict(runs[0]["meta"])
-
-    # the ASIC counter and the optic's own reading are different instruments; pooling
-    # them would compare two measurements against one threshold
-    for run, label in zip(runs[1:], labels[1:]):
-        if run["meta"]["ber_source"] != base["ber_source"]:
-            raise ValueError(
-                f"refusing to merge: {labels[0]} reports ber_source "
-                f"'{base['ber_source']}' but {label} reports '{run['meta']['ber_source']}'. "
-                "These are different instruments and must never be pooled.")
-        if run["meta"]["test_type"] != base["test_type"]:
-            raise ValueError(
-                f"refusing to merge: {labels[0]} is a '{base['test_type']}' capture but "
-                f"{label} is '{run['meta']['test_type']}'.")
-
-    switches = {}
-    for run, label in zip(runs, labels):
-        for switch, info in (run["meta"]["switches"] or {}).items():
-            if switch not in switches:
-                switches[switch] = dict(info)
-                continue
-            for field, value in info.items():
-                held = switches[switch][field]
-                if held is None:
-                    switches[switch][field] = value
-                elif value is not None and value != held:
-                    print(f"Warning: switch {switch} reports {field} '{held}' in "
-                          f"{labels[0]} but '{value}' in {label}; keeping '{held}'. "
-                          "The two runs may not be the same population.")
-
-    starts = [run["meta"]["start_time"] for run in runs]
-    base["start_time"] = min(starts)
-    base["switches"] = switches
+    _refuse_mixed_ber_sources(runs, labels)
+    _refuse_mixed_test_types(runs, labels)
+    base["switches"] = _union_switches(runs, labels)
+    base["start_time"] = _earliest_start(runs)
     base["merged_from"] = list(labels)
     return base
 

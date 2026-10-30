@@ -382,34 +382,46 @@ def _report_sections(test_type, measurements):
             counts.append(f"{section} {len(value)}")
     print(f"  {test_type} capture | " + " | ".join(counts))
 
-def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
-    # read_only streams the sheets instead of building the whole workbook in memory;
-    # on a real 361MB soak that is the difference between seconds and half an hour
-    wb = load_workbook(data, read_only=True)
-    print(f"{Path(data).name}")
+def _read_capture(wb):
+    """The four sheets the measurements come from. A missing one reads as None."""
+    return (
+        _sheet_records(wb, "log",
+            "measurements have no timeline, so temperatures will be dropped"),
+        _sheet_records(wb, "get_link_flap",
+            "the link flap chart will have no data"),
+        _sheet_records(wb, "get_module_info",
+            "temperatures and the spec limits will be missing"),
+        _sheet_records(wb, "get_switch_sensor",
+            "the board sensor line will be omitted"),
+    )
 
-    # the caller usually knows which testcase this is; detection is the fallback
-    if test_type is None:
-        test_type = _detect_test_type(wb)
 
-    log_records = _sheet_records(wb, "log",
-        "measurements have no timeline, so temperatures will be dropped")
-    flap_records = _sheet_records(wb, "get_link_flap",
-        "the link flap chart will have no data")
-    module_records = _sheet_records(wb, "get_module_info",
-        "temperatures and the spec limits will be missing")
-    sensor_records = _sheet_records(wb, "get_switch_sensor",
-        "the board sensor line will be omitted")
+def collect_measurements(wb, test_type, recovery_commanded):
+    """Every section of one capture.
 
-    timestamps = _log_timestamps(log_records or [])
+    A section is null when its sheet was absent - "could not look", which is a
+    different fact from an empty list meaning "looked, found nothing".
+    """
+    log_records, flap_records, module_records, sensor_records = _read_capture(wb)
+
+    if log_records is None:
+        timestamps = _log_timestamps([])
+    else:
+        timestamps = _log_timestamps(log_records)
+
     ber, ber_source, tcode, uncorrected_cw = _collect_fec_metrics(wb, module_records)
-    link_up = _collect_link_up_metrics(wb)
 
-    meta = collect_meta_data(log_records or [], module_records or [], test_type)
+    if log_records is None:
+        meta_log = []
+    else:
+        meta_log = log_records
+    if module_records is None:
+        meta_modules = []
+    else:
+        meta_modules = module_records
+    meta = collect_meta_data(meta_log, meta_modules, test_type)
     meta["ber_source"] = ber_source
 
-    # a section is null when its sheet was absent — "could not look", which is a
-    # different fact from an empty list meaning "looked, found nothing"
     if flap_records is None:
         flaps = None
     else:
@@ -425,31 +437,31 @@ def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
     else:
         sensors = collect_sensors(sensor_records, timestamps)
 
-    measurements = {
+    return {
         "meta": meta,
         "flaps": flaps,
         "ber": ber,
         "tcode": tcode,
         "uncorrected_cw": uncorrected_cw,
-        "link_up": link_up,
+        "link_up": _collect_link_up_metrics(wb),
         "temps": temps,
         "sensors": sensors,
     }
 
+
+def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
+    # read_only streams the sheets instead of building the whole workbook in memory;
+    # on a real 361MB soak that is the difference between seconds and half an hour
+    wb = load_workbook(data, read_only=True)
+    print(f"{Path(data).name}")
+
+    # the caller usually knows which testcase this is; detection is the fallback
+    if test_type is None:
+        test_type = _detect_test_type(wb)
+
+    measurements = collect_measurements(wb, test_type, recovery_commanded)
     with open(yml_file, "w") as f:
         yaml.dump(measurements, f, default_flow_style=False, sort_keys=False)
 
     _report_sections(test_type, measurements)
     return measurements
-
-
-if __name__ == "__main__":
-    references = Path(__file__).parent.parent / "references"
-    output_dir = Path(__file__).parent / "output"
-    output_dir.mkdir(exist_ok=True)
-    captures = ["soak_sample.xlsx", "reset_dut_sample.xlsx", "reset_ref_sample.xlsx"]
-    for capture in captures:
-        output_yml = output_dir / (Path(capture).stem + ".yml")
-        data_to_yml(references / capture, output_yml)
-        print(f"Wrote {output_yml}")
-        print(f"  {output_yml.stat().st_size} bytes")

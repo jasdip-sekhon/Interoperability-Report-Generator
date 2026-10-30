@@ -4,7 +4,9 @@ Captures (`.xlsx`) → measurements (`.yml`) → charts (`.png`) → deck (`.ppt
 User docs are [`README.md`](README.md); design is [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ```
-main.py            sequences the four stages
+main.py            the command line, and nothing else
+pipeline.py        sequences the four stages
+run_config.py      what one report covers, from a config or from the data
 data/              capture xlsx -> measurement yaml, and the DUT/Ref merge
 interconnects/     topology xlsx -> interconnects.yml (x-axis labels)
 output/<report>/   one self-contained folder per report: deck, charts, x-axis labels
@@ -96,4 +98,4 @@ editing programmatically - a changed ending is a diff that changes nothing.
 
 - No caching — every run reconverts every spreadsheet. A real report takes up to an
   hour; re-rendering from `data/output/*.yml` takes seconds.
-- `main.py` has no tests.
+- `pipeline.py` and `run_config.py` have no tests; both are importable, so they can.

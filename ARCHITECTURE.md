@@ -5,7 +5,9 @@ How the stages fit together. For how to *use* the tool, see [`README.md`](README
 ## Layout
 
 ```
-main.py                  runs the whole pipeline
+main.py                  the command line, and nothing else
+pipeline.py              sequences the four stages
+run_config.py            what one report covers, from a config or from the data
 run.yml                  which captures one report covers (one per rack)
 data/
   data_to_yml.py         one capture xlsx -> one measurement yaml
@@ -71,7 +73,7 @@ reason rather than being silently thin.
 
 Every test is a standalone script (asserts, not a framework) and lives in `tests/`,
 regardless of which stage it covers — a test importing its module by bare name is what
-`tests/_bootstrap.py` sets up, the same sys.path trick `main.py` uses to let the stages
+`tests/_bootstrap.py` sets up, the same sys.path trick `pipeline.py` uses to let the stages
 import each other.
 
 ```bash
