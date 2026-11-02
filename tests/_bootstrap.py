@@ -12,3 +12,5 @@ import sys
 PROJECT_ROOT = Path(__file__).parent.parent
 for folder in ("data", "interconnects", "plotting", "deck"):
     sys.path.insert(0, str(PROJECT_ROOT / folder))
+# pipeline.py and run_config.py sit at the root, not in a stage folder
+sys.path.insert(0, str(PROJECT_ROOT))

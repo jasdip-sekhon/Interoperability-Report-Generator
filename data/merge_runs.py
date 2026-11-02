@@ -228,8 +228,10 @@ def merge_runs(paths, out_path):
         "sensors": merge_points(runs, offsets, "sensors", ["switch"]),
     }
 
-    with open(out_path, "w") as f:
+    partial = Path(out_path).with_suffix(".partial")
+    with open(partial, "w") as f:
         yaml.dump(merged, f, default_flow_style=False, sort_keys=False)
+    partial.replace(out_path)
 
     _report(runs, labels, merged, offsets, conflicts)
     return merged

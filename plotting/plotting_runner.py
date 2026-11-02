@@ -544,9 +544,11 @@ def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
         "charts": charts,
     }
     path = Path(out_dir) / MANIFEST_NAME
-    with open(path, "w", encoding="utf-8") as f:
+    partial = path.with_suffix(".partial")
+    with open(partial, "w", encoding="utf-8") as f:
         yaml.dump(manifest, f, default_flow_style=False, sort_keys=False,
                   allow_unicode=True)
+    partial.replace(path)
     print(f"  Wrote {len(charts)} chart(s) and {path.name}")
     return path
 

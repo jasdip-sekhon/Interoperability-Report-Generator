@@ -96,6 +96,8 @@ editing programmatically - a changed ending is a diff that changes nothing.
 
 ## Known rough edges
 
-- No caching — every run reconverts every spreadsheet. A real report takes up to an
-  hour; re-rendering from `data/output/*.yml` takes seconds.
+- A capture is reconverted only when something that changes its yaml changes: the
+  spreadsheet, `data_to_yml.py` itself, `test_type`, or `recovery_commanded`. The stamp
+  is `meta.source` in each yaml (see `is_current`), and `--no-cache` ignores it. Hashing
+  a 379 MB capture costs 0.8s against ~480s to convert it.
 - `pipeline.py` and `run_config.py` have no tests; both are importable, so they can.

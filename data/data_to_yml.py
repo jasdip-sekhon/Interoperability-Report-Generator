@@ -1,5 +1,7 @@
 from datetime import datetime
 from pathlib import Path
+import hashlib
+
 from openpyxl import load_workbook
 import yaml
 
@@ -449,6 +451,50 @@ def collect_measurements(wb, test_type, recovery_commanded):
     }
 
 
+def _file_hash(path):
+    digest = hashlib.blake2b(digest_size=16)
+    with open(path, "rb") as f:
+        while True:
+            block = f.read(1 << 20)
+            if not block:
+                break
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _source_stamp(data, test_type, recovery_commanded):
+    """Everything that can change this yaml's contents."""
+    return {
+        "file": str(Path(data).resolve()),
+        "hash": _file_hash(data),
+        # a parser fix leaves every existing yaml wrong, and nothing else would notice
+        "converter": _file_hash(__file__),
+        "test_type": test_type,
+        "recovery_commanded": recovery_commanded,
+    }
+
+
+def is_current(data, yml_file, test_type, recovery_commanded):
+    """Whether yml_file was built from exactly these inputs, by this converter."""
+    yml_file = Path(yml_file)
+    if not yml_file.exists():
+        return False
+    try:
+        with open(yml_file) as f:
+            existing = yaml.safe_load(f)
+    except (OSError, yaml.YAMLError):
+        return False
+    if not isinstance(existing, dict):
+        return False
+    meta = existing.get("meta")
+    if meta is None:
+        return False
+    held = meta.get("source")
+    if held is None:
+        return False
+    return held == _source_stamp(data, test_type, recovery_commanded)
+
+
 def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
     # read_only streams the sheets instead of building the whole workbook in memory;
     # on a real 361MB soak that is the difference between seconds and half an hour
@@ -459,9 +505,19 @@ def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
     if test_type is None:
         test_type = _detect_test_type(wb)
 
-    measurements = collect_measurements(wb, test_type, recovery_commanded)
-    with open(yml_file, "w") as f:
+    try:
+        measurements = collect_measurements(wb, test_type, recovery_commanded)
+    finally:
+        # read_only holds the workbook's zip open until this is called
+        wb.close()
+
+    measurements["meta"]["source"] = _source_stamp(data, test_type, recovery_commanded)
+
+    # renamed into place: an interrupt leaves the old yaml, not half of a new one
+    partial = Path(yml_file).with_suffix(".partial")
+    with open(partial, "w") as f:
         yaml.dump(measurements, f, default_flow_style=False, sort_keys=False)
+    partial.replace(yml_file)
 
     _report_sections(test_type, measurements)
     return measurements

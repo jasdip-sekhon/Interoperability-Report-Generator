@@ -22,5 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--topology",
                         help="topology .xlsx for x-axis labels; without one the labels "
                              "come from the measurements themselves")
+    parser.add_argument("--no-cache", action="store_true",
+                        help="reconvert every capture even if nothing changed")
     args = parser.parse_args()
-    run(args.target, args.topology)
+    run(args.target, args.topology, not args.no_cache)

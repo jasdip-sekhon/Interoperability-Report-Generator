@@ -15,7 +15,7 @@ for folder in ("data", "interconnects", "plotting", "deck"):
     sys.path.insert(0, str(PROJECT_ROOT / folder))
 
 from build_deck import build_deck                      # noqa: E402
-from data_to_yml import data_to_yml                    # noqa: E402
+from data_to_yml import data_to_yml, is_current        # noqa: E402
 from interconnects_to_yml import interconnects_to_yml  # noqa: E402
 from merge_runs import merge_runs                      # noqa: E402
 from plotting_runner import generate_plots             # noqa: E402
@@ -48,7 +48,7 @@ def _capture_entries(testcase):
     return entries
 
 
-def prepare_measurements(testcase):
+def prepare_measurements(testcase, use_cache=True):
     """Convert each capture. Returns [(label, measurement yaml)].
 
     Each run is charted on its own: a DUT run and a Ref run reset different hardware, so
@@ -59,18 +59,29 @@ def prepare_measurements(testcase):
     if recovery_commanded is None:
         recovery_commanded = False
 
+    # the configured name, not a guess from the sheets: detection calls every
+    # non-reset capture a soak, losing the recovery signal
+    test_type = _slug(testcase["name"])
+
     converted = []
     paths = []
+    reused = 0
     for label, capture in _capture_entries(testcase):
         source = _resolve(capture)
         target = MEASUREMENTS_DIR / (source.stem + ".yml")
-        # the configured name, not a guess from the sheets: detection calls every
-        # non-reset capture a soak, losing the recovery signal
-        data_to_yml(source, target, _slug(testcase["name"]), recovery_commanded)
+        if use_cache and is_current(source, target, test_type, recovery_commanded):
+            reused = reused + 1
+        else:
+            data_to_yml(source, target, test_type, recovery_commanded)
         converted.append((label, target))
         paths.append(target)
 
+    if reused:
+        print(f"  Reused {reused} of {len(paths)} capture(s); the spreadsheets and the "
+              f"converter are unchanged since they were read.")
+
     if len(paths) > 1:
+        # not cached: it is seconds, and redoing it keeps it true to its inputs
         merged = MEASUREMENTS_DIR / f"{_slug(testcase['name'])}_merged.yml"
         merge_runs(paths, merged)
     return converted
@@ -87,7 +98,7 @@ def build_x_axis(topology, report_dir):
     return interconnects_yml
 
 
-def run(target, topology=None):
+def run(target, topology=None, use_cache=True):
     config = config_for(target)
     report = config.get("report")
     if report is None:
@@ -104,7 +115,7 @@ def run(target, topology=None):
     manifests = []
     for testcase in config["testcases"]:
         print(f"== {testcase['name']} ==")
-        for label, measurements in prepare_measurements(testcase):
+        for label, measurements in prepare_measurements(testcase, use_cache):
             name = testcase["name"]
             if label:
                 name = f"{name} {label}"

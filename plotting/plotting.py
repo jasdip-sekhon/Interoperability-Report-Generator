@@ -94,8 +94,11 @@ class Plots:
 
     def _finish(self, figure, out_path):
         figure.tight_layout()
-        figure.savefig(out_path, dpi=self.style["DPI"])
+        # renamed into place, so an interrupt leaves no half-written image behind
+        partial = Path(out_path).with_suffix(".partial")
+        figure.savefig(partial, dpi=self.style["DPI"], format="png")
         plt.close(figure)
+        partial.replace(out_path)
         return True
 
     def bargraph(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):

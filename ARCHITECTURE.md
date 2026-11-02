@@ -64,8 +64,11 @@ groups a slide by scope and metric and sizes the charts by how many share it, wi
 knowing what any metric means — so a chart type added upstream appears in the deck with
 no change to `deck/`. Each testcase gets its own folder, which the runner clears first.
 
-The converters read `references/` and are only rerun when a capture changes; the charts
-read their yaml, never the spreadsheets. Both print what they skipped and why — a missing
+The charts read the measurement yaml, never the spreadsheets. A capture is reconverted
+only when its yaml would come out different — the spreadsheet changed, `data_to_yml.py`
+changed, or the testcase's `test_type` or `recovery_commanded` changed. Each yaml records
+all four in `meta.source`, and `is_current` reuses the file only on an exact match, so a
+parser fix invalidates every yaml rather than leaving them quietly wrong. Both print what they skipped and why — a missing
 sheet, a saturated reading, a lane with no topology entry — so a thin chart has a stated
 reason rather than being silently thin.
 

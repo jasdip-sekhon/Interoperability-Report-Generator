@@ -15,9 +15,12 @@ def _lookup_sheet(wb):
 
 def interconnects_to_yml(interconnects_file, output_yml):
     wb = load_workbook(interconnects_file, read_only=True)
-    worksheet = _lookup_sheet(wb)
-
-    rows = list(worksheet.iter_rows(values_only=True))
+    try:
+        worksheet = _lookup_sheet(wb)
+        rows = list(worksheet.iter_rows(values_only=True))
+    finally:
+        # read_only holds the workbook's zip open until this is called
+        wb.close()
     if not rows:
         return {}
 
@@ -38,9 +41,12 @@ def interconnects_to_yml(interconnects_file, output_yml):
     # one shared yaml serves whichever report ran last, so stamp which workbook it
     # came from: charting a rack against another rack's axis is otherwise only
     # visible as every interconnect going unmatched
-    with open(output_yml, 'w') as f:
+    # renamed into place: an interrupt leaves the old yaml, not half of a new one
+    partial = Path(output_yml).with_suffix(".partial")
+    with open(partial, 'w') as f:
         f.write("# source: " + str(Path(interconnects_file).resolve()) + "\n")
         yaml.dump(interconnects, f, default_flow_style=False, sort_keys=False)
+    partial.replace(output_yml)
 
     return interconnects
 

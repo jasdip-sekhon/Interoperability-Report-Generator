@@ -25,7 +25,9 @@ existing `run_*.yml` and changing the paths is the quickest start.
 python main.py run_myrack.yml
 ```
 
-It prints progress as it goes; a full report can take up to an hour.
+It prints progress as it goes. Reading the spreadsheets is the slow part — up to an
+hour the first time — but a capture already read is reused, so later runs take seconds.
+Pass `--no-cache` to read them all again.
 
 **3. Open the deck** named on the last line, in `output/`.
 
