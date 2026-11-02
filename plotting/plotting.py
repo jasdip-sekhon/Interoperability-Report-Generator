@@ -94,7 +94,7 @@ class Plots:
 
     def _finish(self, figure, out_path):
         figure.tight_layout()
-        # renamed into place, so an interrupt leaves no half-written image behind
+        # written to a temp file and renamed, so an interrupt leaves nothing half-written
         partial = Path(out_path).with_suffix(".partial")
         figure.savefig(partial, dpi=self.style["DPI"], format="png")
         plt.close(figure)

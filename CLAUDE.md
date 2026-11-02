@@ -108,8 +108,8 @@ inside `if __name__ == "__main__":` can never be reached by a test. The work liv
 `data_to_yml`.
 
 **A function does one job.** When one grows several, split it by the rule it enforces -
-`merge_meta` became `_refuse_mixed_ber_sources`, `_union_switches`, `_earliest_start`.
-Nothing in `plotting/` nests deeper than 3 or recurses; keep it that way.
+`merge_meta` became `_refuse_mixed_ber_sources`, `_union_switches`, `_earliest_start`,
+and `collect_meta_data` became identity, start time and temperature limits.
 
 **No unused parameters.** An argument the body ignores is a lie about the interface -
 `value_series` took `colors` and `labels` and read neither, so callers built label lists
@@ -122,6 +122,22 @@ obvious fields around it do not.
 **Write through a partial file and rename**, so an interrupted run leaves the previous
 file rather than half of a new one. Close workbooks in `finally` - `read_only` holds the
 zip open.
+
+**Measure to find candidates, not to decide.** Reading does not reveal which function
+has grown several jobs; scanning does. Both real finds came that way - `collect_meta_data`
+at complexity 19, `merge_meta` nested 5 deep. Walk the AST for:
+
+| | what it means | where the project sits |
+|---|---|---|
+| complexity | branches in the worst function, +1 per `if`/`for`/`while`/`except`/`and` | at most 12 |
+| nesting | deepest stacked control flow | 3, except `collect_link_flaps` at 4 |
+| longest | lines in the longest function | 55 |
+| average | mean function length in a file | 9-22; over ~20 usually means two jobs each |
+| style | comprehensions, `zip`, `enumerate`, lambdas, ternaries | 0, bar three deliberate |
+
+These point at files worth reading and settle nothing on their own. High complexity from
+a list of independent choices is fine: `generate_plots` is 12 because it asks `_wanted`
+seven times, and flattening that would make it worse. No recursion anywhere; keep it so.
 
 Line endings are **LF**, normalised by `.gitattributes`. Do not rewrite them when
 editing programmatically - a changed ending is a diff that changes nothing.

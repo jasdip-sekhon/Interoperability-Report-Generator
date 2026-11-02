@@ -26,8 +26,13 @@ DOMAIN_WORDS = (
     "switch", "switches", "interconnect", "interconnects", "lane", "lanes",
     "port", "ports", "sensor", "sensors", "optic", "optics",
     "fec", "ber", "tcode", "flap", "flaps", "codeword", "codewords", "linkup",
-    "capture", "captures", "soak", "rack", "temperature", "temp",
+    "capture", "captures", "soak", "rack", "temperature",
 )
+
+# "temp" means temperature here and a scratch file everywhere else. A method
+# called temp_time_series is a leak; a comment about a temp file is not, so it
+# is checked only where it names something.
+NAME_ONLY_WORDS = ("temp",)
 
 # every module the library is allowed to reach for
 ALLOWED_IMPORTS = ("pathlib", "yaml", "matplotlib")
@@ -57,6 +62,8 @@ print(f"ok  imports: only {', '.join(sorted(set(m.split('.')[0] for m in importe
 # --- nor name anything from this project's domain ---------------------------------
 
 PATTERN = re.compile(r"\b(" + "|".join(DOMAIN_WORDS) + r")\b", re.IGNORECASE)
+NAME_PATTERN = re.compile(r"\b(" + "|".join(DOMAIN_WORDS + NAME_ONLY_WORDS)
+                          + r")\b", re.IGNORECASE)
 
 
 def offending_lines(text, pattern=PATTERN):
@@ -92,12 +99,16 @@ for node in ast.walk(tree):
         if node.name != "__init__":
             methods.append(node.name)
 for name in methods:
-    match = PATTERN.search(name.replace("_", " "))
+    match = NAME_PATTERN.search(name.replace("_", " "))
     assert not match, (
         f"the method '{name}' is named after this project's domain ('{match.group(0)}' "
         f"if it matched); a chart type should be named for its shape, not for what "
         f"this report happens to put in it.")
 print(f"ok  public methods read generically: {', '.join(sorted(methods))}")
+
+assert NAME_PATTERN.search("temp time series"),     "a method named temp_time_series must still be caught"
+assert not PATTERN.search("# written to a partial file, not a temp file"),     "prose about a scratch file is not a domain leak"
+print("ok  'temp' is checked in names, not in prose")
 
 print()
 print("all tests passed")

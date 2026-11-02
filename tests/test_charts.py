@@ -119,8 +119,69 @@ assert missing == [("0", 1, 1)], \
     "an interconnect with no measurement is reported, not quietly dropped"
 print("ok  interconnects without measurements are detectable (they render as gaps)")
 
-print()
-print("all tests passed")
+
+# --- every draw_* is actually called, and writes what its manifest entry claims ------
+#
+# The reshaping above is covered thoroughly, but nothing here used to call a draw_*.
+# Dropping an import from charts.py once left this file green while python main.py died
+# on the first chart, so each family is now exercised end to end against a real render.
+
+import os
+import shutil
+import tempfile
+
+from charts import (draw_ber, draw_flaps_by_interconnect, draw_flaps_by_switch,
+                    draw_link_up, draw_tcode, draw_temperature_over_time,
+                    draw_temperature_per_port)
+
+out_dir = tempfile.mkdtemp()
+keys = [("0", 1, 1), ("0", 1, 2)]
+axis_labels = ["1-1-Tx-A ==> 1-1-Rx-B", "1-2-Tx-A ==> 1-2-Rx-B"]
+meta = {"test_type": "reset", "ber_source": "fec_counter",
+        "switches": {"0": {"device_model": "SW-1", "device_ip": "10.0.0.1",
+                           "temp_min": 0.0, "temp_max": 70.0}}}
+measurements = {
+    "flaps": [{"switch": "0", "port": 1, "lane": 1, "count": 2, "never_recovered": False},
+              {"switch": "0", "port": 1, "lane": 2, "count": 0, "never_recovered": False}],
+    "ber": [lane("0", 1, 1, [1e-11, 2e-11]), lane("0", 1, 2, [3e-11])],
+    "tcode": [lane("0", 1, 1, [1, 2]), lane("0", 1, 2, [0])],
+    "link_up": [lane("0", 1, 1, [4.0, 5.0]), lane("0", 1, 2, [6.0])],
+    "temps": [{"switch": "0", "port": 1, "points": [[0.0, 40.0], [1.0, 44.0]]}],
+    "sensors": [{"switch": "0", "points": [[0.0, 20.0], [1.0, 22.0]]}],
+}
+
+drawn = []
+drawn.extend(draw_flaps_by_switch(measurements, ["0"], ["switch 0"], out_dir))
+drawn.extend(draw_flaps_by_interconnect(measurements, meta, keys, axis_labels, out_dir))
+drawn.extend(draw_ber(measurements, meta, keys, axis_labels, out_dir))
+drawn.extend(draw_tcode(measurements, meta, keys, axis_labels, out_dir))
+drawn.extend(draw_link_up(measurements, meta, keys, axis_labels, out_dir))
+drawn.extend(draw_temperature_over_time(measurements, meta, ["0"], [], out_dir))
+drawn.extend(draw_temperature_per_port(measurements, meta, ["0"], {}, out_dir))
+
+assert len(drawn) == 7, f"one chart per family, got {len(drawn)}"
+for entry in drawn:
+    for field in ("file", "title", "scope", "metric"):
+        assert entry.get(field), f"{entry.get('file')} has no {field}"
+    path = os.path.join(out_dir, entry["file"])
+    assert os.path.exists(path), f"{entry['file']} is in the manifest but was not written"
+    assert os.path.getsize(path) > 1000, f"{entry['file']} is too small to be a chart"
+metrics = []
+for entry in drawn:
+    metrics.append(entry["metric"])
+assert len(set(metrics)) == 7, f"each family declares its own metric: {metrics}"
+print(f"ok  every draw_* renders and declares what it wrote ({len(drawn)} families)")
+
+# a capture missing a section charts nothing rather than failing
+empty = dict(measurements)
+for section in ("flaps", "ber", "tcode", "link_up", "temps", "sensors"):
+    empty[section] = None
+assert draw_ber(empty, meta, keys, axis_labels, out_dir) == []
+assert draw_flaps_by_switch(empty, ["0"], ["switch 0"], out_dir) == []
+assert draw_temperature_over_time(empty, meta, ["0"], [], out_dir) == []
+print("ok  a missing section draws nothing instead of raising")
+
+shutil.rmtree(out_dir, ignore_errors=True)
 
 print()
 print("all tests passed")
