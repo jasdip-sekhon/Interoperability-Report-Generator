@@ -63,7 +63,7 @@ testcases:
 
 | setting | what it does | needed? |
 |---|---|---|
-| `report` | names the deck, e.g. `output/r12-tb1.pptx` | yes |
+| `report` | names the deck and its folder, e.g. `output/r12-tb1/r12-tb1.pptx` | yes |
 | `topology` | the Tx/Rx interconnects spreadsheet, for real x-axis labels | no |
 | `name` | the section heading in the deck | yes |
 | `captures` | the test spreadsheets for that testcase | yes |

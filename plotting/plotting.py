@@ -200,11 +200,67 @@ class Plots:
         colorbar = figure.colorbar(mappable, ax=axes)
         colorbar.set_label(label)
 
-    def value_series(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, overlay_points=None, overlay_label="Overlay"):
+    def _value_range(self, series, overlay_points, spec_min, spec_max):
+        """The colour scale. Spec limits win, so charts of one metric stay comparable."""
+        all_values = []
+        for timestamps, values in series:
+            all_values.extend(values)
+        if overlay_points:
+            for timestamp, value in overlay_points:
+                all_values.append(value)
+        if spec_min is not None:
+            vmin = spec_min
+        else:
+            vmin = min(all_values, default=0)
+        if spec_max is not None:
+            vmax = spec_max
+        else:
+            vmax = max(all_values, default=1)
+        return Normalize(vmin=vmin, vmax=vmax)
+
+    def _draw_value_line(self, axes, timestamps, values, norm):
+        segments = self._segments(timestamps, values)
+        if segments:
+            line = LineCollection(segments, cmap=self.style["VALUE_CMAP"], norm=norm)
+            # each segment takes the colour of the value it starts at; this cannot be
+            # values[:-1] because segments spanning a gap were dropped
+            segment_colors = []
+            for segment in segments:
+                segment_colors.append(segment[0][1])
+            line.set_array(segment_colors)
+            axes.add_collection(line)
+            return
+
+        # isolated samples have no segment to colour - a series of one, or one point
+        # stranded either side of a gap. Show them rather than drawing nothing.
+        points_x = []
+        points_y = []
+        for i in range(len(timestamps)):
+            if timestamps[i] == timestamps[i] and values[i] == values[i]:
+                points_x.append(timestamps[i])
+                points_y.append(values[i])
+        if points_x:
+            axes.scatter(points_x, points_y, c=points_y,
+                         cmap=self.style["VALUE_CMAP"], norm=norm, s=18)
+
+    def _draw_overlay(self, axes, overlay_points, overlay_label):
+        overlay_x = []
+        overlay_y = []
+        for timestamp, value in overlay_points:
+            overlay_x.append(timestamp)
+            overlay_y.append(value)
+        axes.plot(overlay_x, overlay_y, color="black", marker="o", markersize=4,
+                  label=overlay_label, linewidth=1.5)
+        axes.legend(loc="upper left", frameon=True)
+
+    def value_series(self, data, keys, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, overlay_points=None, overlay_label="Overlay"):
         """One line per key over a continuous x axis, coloured by its own value.
 
         Colour and height both encode the value, so a series can be read for level and
         for trend at once, and the colourbar makes the scale comparable between charts.
+
+        There are no category labels and no per-key colours: a key is identified by
+        where its line sits, not by a legend that would need one entry per line.
 
         overlay_points is a single extra series drawn as a plain dark line on top - a
         reference the other series are read against. It is labelled by overlay_label,
@@ -215,51 +271,14 @@ class Plots:
         figure, axes = plt.subplots(figsize=(12, 6))
 
         series = self._process_time_series(data, keys)
-        all_values = []
+        norm = self._value_range(series, overlay_points, spec_min, spec_max)
         for timestamps, values in series:
-            all_values.extend(values)
-        if overlay_points:
-            for timestamp, value in overlay_points:
-                all_values.append(value)
-        vmin = spec_min if spec_min is not None else min(all_values, default=0)
-        vmax = spec_max if spec_max is not None else max(all_values, default=1)
-        norm = Normalize(vmin=vmin, vmax=vmax)
-
-        for timestamps, values in series:
-            segments = self._segments(timestamps, values)
-            if segments:
-                line = LineCollection(segments, cmap=self.style["VALUE_CMAP"], norm=norm)
-                # each segment takes the colour of the value it starts at; this cannot
-                # be values[:-1] because segments spanning a gap were dropped
-                segment_colors = []
-                for segment in segments:
-                    segment_colors.append(segment[0][1])
-                line.set_array(segment_colors)
-                axes.add_collection(line)
-                continue
-            # isolated samples have no segment to colour — a series of one, or one point
-            # stranded either side of a gap. Show them rather than drawing nothing.
-            points_x = []
-            points_y = []
-            for i in range(len(timestamps)):
-                if timestamps[i] == timestamps[i] and values[i] == values[i]:
-                    points_x.append(timestamps[i])
-                    points_y.append(values[i])
-            if points_x:
-                axes.scatter(points_x, points_y, c=points_y,
-                             cmap=self.style["VALUE_CMAP"], norm=norm, s=18)
+            self._draw_value_line(axes, timestamps, values, norm)
         axes.relim()
         axes.autoscale_view()
 
         if overlay_points:
-            overlay_x = []
-            overlay_y = []
-            for timestamp, value in overlay_points:
-                overlay_x.append(timestamp)
-                overlay_y.append(value)
-            axes.plot(overlay_x, overlay_y, color="black", marker="o", markersize=4,
-                      label=overlay_label, linewidth=1.5)
-            axes.legend(loc="upper left", frameon=True)
+            self._draw_overlay(axes, overlay_points, overlay_label)
 
         axes.grid(True, alpha=0.3)
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)

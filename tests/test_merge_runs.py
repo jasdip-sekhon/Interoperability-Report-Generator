@@ -11,15 +11,14 @@ import tempfile
 import yaml
 
 import _bootstrap
-from merge_runs import (
+from merge_rules import (
     MAX_LISTED_CONFLICTS,
     merge_flaps,
     merge_meta,
     merge_points,
-    merge_runs,
     merge_values,
-    _start_offsets,
 )
+from merge_runs import merge_runs, _start_offsets
 
 
 def lane(switch, port, lane_no, **fields):
@@ -54,7 +53,7 @@ ref = run(flaps=[
     lane("0", 1, 1, count=0, never_recovered=True),    # stuck in BOTH
     lane("0", 1, 2, count=0, never_recovered=False),   # recovered in ref
 ])
-flaps, _ = merge_flaps([dut, ref], ["dut", "ref"])
+flaps, _ = merge_flaps([dut, ref])
 by_lane = {(r["switch"], r["port"], r["lane"]): r for r in flaps}
 assert by_lane[("0", 1, 1)]["never_recovered"] is True, "stuck in both runs stays stuck"
 assert by_lane[("0", 1, 2)]["never_recovered"] is False, \
@@ -82,7 +81,7 @@ print("ok  coverage unions: a lane seen by one run only is kept, shared lanes co
 
 dut = run(flaps=[lane("0", 1, 1, count=0, never_recovered=False)])
 ref = run(flaps=[lane("0", 1, 1, count=3, never_recovered=False)])
-flaps, conflicts = merge_flaps([dut, ref], ["dut", "ref"])
+flaps, conflicts = merge_flaps([dut, ref])
 assert flaps[0]["count"] == 3, "a flap seen in either run really happened"
 assert conflicts == 1
 print("ok  flap count: max across runs, disagreement counted")

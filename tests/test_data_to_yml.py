@@ -9,21 +9,20 @@ of the same lane - is never covered by running against references/.
 from datetime import datetime
 
 import _bootstrap
-from data_to_yml import (
+from collect import (
+    SENSOR_COLUMN,
+    VDM_PREFEC_PREFIX,
     collect_ber_from_vdm,
     collect_link_flaps,
     collect_link_up,
-    collect_meta_data,
     collect_pre_fec_ber,
-    collect_sensors,
     collect_tcode,
     collect_temps,
+    collect_sensors,
     collect_uncorrected_cw,
-    _norm_switch,
-    _parse_temp,
-    SENSOR_COLUMN,
-    VDM_PREFEC_PREFIX,
 )
+from meta import collect_meta_data
+from parse import _group_by_lane, _norm_switch, _parse_temp
 
 
 def lane_row(switch, port, lane, column, value):

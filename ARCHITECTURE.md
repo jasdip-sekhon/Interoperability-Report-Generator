@@ -11,12 +11,23 @@ run_config.py            what one report covers, from a config or from the data
 run.yml                  which captures one report covers (one per rack)
 data/
   data_to_yml.py         one capture xlsx -> one measurement yaml
+    sheets.py            a workbook into header-keyed records
+    parse.py             cells and rows into usable values
+    collect.py           one collector per measurement section
+    meta.py              what describes a capture, not what it measured
+    cache.py             has this capture already been converted
   merge_runs.py          several of those yaml -> one, for a testcase captured twice
+    merge_rules.py       how each section is reconciled
+    merge_report.py      what the merge did
   output/                the generated measurement yaml
 interconnects/           topology xlsx -> yaml (x-axis labels)
 plotting/
   plotting.py            the chart library — data in, PNG out
-  plotting_runner.py     builds every chart for one capture
+  plotting_runner.py     which charts a capture gets
+    charts.py            the seven chart families and their reshaping
+    layout.py            one chart per switch, split again when a switch is wide
+    x_axis.py            the topology <-> measurement join
+    output.py            where charts go, and the manifest that declares them
   plotting_style.yaml    colours, sizing, DPI
 deck/
   build_deck.py          manifest + PNGs -> pptx

@@ -7,17 +7,20 @@ User docs are [`README.md`](README.md); design is [`ARCHITECTURE.md`](ARCHITECTU
 main.py            the command line, and nothing else
 pipeline.py        sequences the four stages
 run_config.py      what one report covers, from a config or from the data
-data/              capture xlsx -> measurement yaml, and the DUT/Ref merge
+data/              capture xlsx -> measurement yaml (data_to_yml -> collect, meta,
+                   parse, sheets, cache), and the DUT/Ref merge (merge_runs ->
+                   merge_rules, merge_report)
 interconnects/     topology xlsx -> interconnects.yml (x-axis labels)
-output/<report>/   one self-contained folder per report: deck, charts, x-axis labels
-plotting/          plotting.py (generic chart library) + plotting_runner.py (domain)
+plotting/          plotting.py is the generic library; plotting_runner -> charts ->
+                   layout -> {output, x_axis}
 deck/              manifest + PNGs -> pptx
+output/<report>/   one self-contained folder per report: deck, charts, x-axis labels
 ```
 
 Verify any change with both, in this order:
 
 ```bash
-python tests/run_all.py     # six test files, asserts not a framework
+python tests/run_all.py     # ten test files, asserts not a framework
 python main.py              # the fixtures, end to end, ~10 seconds
 ```
 
@@ -59,6 +62,10 @@ becomes `0` while `4-33` and `Ixia` stay as they are.
 
 ## Domain facts that are easy to get wrong
 
+- **T-Code is the FEC bin** - symbol errors per codeword. KP4 RS(544,514) corrects up
+  to 15 and fails at 16, so the spec line at 6 is a margin, not the cliff. Likewise the
+  BER line at 2e-6 sits ~120x below KP4's 2.4e-4 tolerance. All three spec constants in
+  `charts.py` come from the test plan, not the MSA.
 - **BER is `FEC_BER`, not `PRE_FEC_SER`.** `PRE_FEC_SER` is 10× larger; reading it makes
   every link look an order of magnitude worse.
 - **BER ≥ 0.5 is counter saturation**, not a reading. Filtered in the runner
@@ -87,9 +94,34 @@ dispatch tables or spec dictionaries.
 `plotting.py` must stay domain-free — no project imports, and no word like switch, lane
 or BER anywhere in it. `test_library_is_generic.py` fails if that slips.
 
-Every `draw_*` follows one recipe, stated in `plotting_runner.py`'s docstring: guard,
-reshape, report unmatched, draw, record. Adding a chart means adding a function, not a
-table row.
+Every `draw_*` follows one recipe, stated in `charts.py`'s docstring: guard, reshape,
+report unmatched, draw, record. Adding a chart means adding a function, not a table row.
+
+**One purpose per file**, and imports run one way so a change is never chased backwards:
+`plotting_runner -> charts -> layout -> {output, x_axis, plotting}`. Before splitting,
+check the group calls nothing outside itself; both splits here were mechanical because
+of that, and would have been a bad idea otherwise.
+
+**Entry points hold no logic.** `main.py` is argparse and nothing else, because code
+inside `if __name__ == "__main__":` can never be reached by a test. The work lives in
+`pipeline.py`, which is importable. Same reason `collect_measurements` was split out of
+`data_to_yml`.
+
+**A function does one job.** When one grows several, split it by the rule it enforces -
+`merge_meta` became `_refuse_mixed_ber_sources`, `_union_switches`, `_earliest_start`.
+Nothing in `plotting/` nests deeper than 3 or recurses; keep it that way.
+
+**No unused parameters.** An argument the body ignores is a lie about the interface -
+`value_series` took `colors` and `labels` and read neither, so callers built label lists
+that were thrown away. Check before adding one for symmetry's sake.
+
+**Comments earn their place.** One line at the surprising spot, not a block restating
+the code. `_source_stamp` hashes its own source file: that line gets a comment, the four
+obvious fields around it do not.
+
+**Write through a partial file and rename**, so an interrupted run leaves the previous
+file rather than half of a new one. Close workbooks in `finally` - `read_only` holds the
+zip open.
 
 Line endings are **LF**, normalised by `.gitattributes`. Do not rewrite them when
 editing programmatically - a changed ending is a diff that changes nothing.
@@ -97,7 +129,10 @@ editing programmatically - a changed ending is a diff that changes nothing.
 ## Known rough edges
 
 - A capture is reconverted only when something that changes its yaml changes: the
-  spreadsheet, `data_to_yml.py` itself, `test_type`, or `recovery_commanded`. The stamp
-  is `meta.source` in each yaml (see `is_current`), and `--no-cache` ignores it. Hashing
-  a 379 MB capture costs 0.8s against ~480s to convert it.
-- `pipeline.py` and `run_config.py` have no tests; both are importable, so they can.
+  spreadsheet, any converting module in `data/`, `test_type`, or `recovery_commanded`.
+  The stamp is `meta.source` in each yaml (see `cache.py`), and `--no-cache` ignores it.
+  Hashing a 379 MB capture costs 0.8s against ~480s to convert it. If `data/` gains a
+  module that parses, add it to `CONVERTER_MODULES` or the stamp stops covering it.
+- `test_charts.py` covers the reshaping helpers but never calls a `draw_*`. Dropping an
+  import from `charts.py` once left the suite green while `python main.py` died
+  immediately - which is why both commands are listed above, in that order.

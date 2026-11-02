@@ -16,6 +16,9 @@ data/output/
 # One shared x-axis file, rewritten by whichever report ran last
 interconnects/interconnects.yml
 
+# half-written files from an interrupted run; the writers rename these into place
+*.partial
+
 Data_Files/
 *.xlsx
 !references/*_sample.xlsx

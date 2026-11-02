@@ -79,7 +79,6 @@ sensor_data = [(0, 39.0), (5, 39.5), (10, 40.2), (15, 40.8)]
 time_series_result = plots.value_series(
     temps,
     keys,
-    labels,
     title="Module temperature over time",
     ylabel="Temperature (C)",
     out_path=TIME_SERIES_OUT_PATH,
