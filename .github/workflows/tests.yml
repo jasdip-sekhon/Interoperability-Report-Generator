@@ -1,0 +1,42 @@
+# Runs what a developer is supposed to run before committing, so that it happens
+# whether or not they remember. The fixture pipeline is here as well as the unit
+# tests: several bugs this project has had only appeared end to end.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # the oldest version the README claims to support, and the one it is developed on
+        python: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python tests/run_all.py
+
+      - name: Fixture pipeline, end to end
+        run: python main.py
+
+      # the output is the point of the project, so keep it where it can be looked at
+      - name: Keep the deck
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deck-py${{ matrix.python }}
+          path: output/**/*.pptx
+          if-no-files-found: error
