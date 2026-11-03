@@ -36,14 +36,32 @@ assert str(_resolve("references/soak_sample.xlsx")).startswith(
 print("ok  _resolve: config paths do not depend on where you ran from")
 
 
-# --- a capture is written two ways in a config --------------------------------
+# --- the general list form: a bare path has no label, a dict carries one -------
 
-entries = _capture_entries({"captures": [
+entries = _capture_entries({"name": "x", "captures": [
     "plain.xlsx",
     {"label": "DUT", "file": "dut.xlsx"},
 ]})
 assert entries == [(None, "plain.xlsx"), ("DUT", "dut.xlsx")]
-print("ok  _capture_entries: a bare path has no label, a dict carries one")
+print("ok  _capture_entries: captures: list, bare path or labelled dict")
+
+# --- the flat shorthand for the two common cases --------------------------------
+
+assert _capture_entries({"name": "x", "capture": "soak.xlsx"}) == [(None, "soak.xlsx")]
+print("ok  _capture_entries: capture: for one file, no label needed")
+
+assert _capture_entries({"name": "x", "dut": "a.xlsx", "ref": "b.xlsx"}) == \
+    [("DUT", "a.xlsx"), ("Ref", "b.xlsx")]
+assert _capture_entries({"name": "x", "dut": "a.xlsx"}) == [("DUT", "a.xlsx")], \
+    "one side alone is still valid, e.g. before the paired run exists"
+print("ok  _capture_entries: dut:/ref: for the paired case")
+
+try:
+    _capture_entries({"name": "x", "capture": "a.xlsx", "captures": ["b.xlsx"]})
+    raise AssertionError("mixing the flat and list forms must be rejected")
+except ValueError as stop:
+    assert "x" in str(stop), "the error should name the testcase"
+print("ok  _capture_entries: refuses to guess which form was meant")
 
 
 # --- no topology is a working report, not an error ----------------------------

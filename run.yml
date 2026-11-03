@@ -12,13 +12,9 @@ topology: references/interconnects_sample.xlsx
 
 testcases:
   - name: Soak
-    captures:
-      - references/soak_sample.xlsx
+    capture: references/soak_sample.xlsx
 
   - name: Reset
     recovery_commanded: true
-    captures:
-      - label: DUT
-        file: references/reset_dut_sample.xlsx
-      - label: Ref
-        file: references/reset_ref_sample.xlsx
+    dut: references/reset_dut_sample.xlsx
+    ref: references/reset_ref_sample.xlsx

@@ -48,26 +48,27 @@ topology: C:/data/R12_TB1_Tx_Rx_Interconnects.xlsx
 testcases:
   - name: Soak
     metrics: [ber, tcode, temps]
-    captures:
-      - C:/data/R12-TB1-Traffic_Soak_20260816.xlsx
+    capture: C:/data/R12-TB1-Traffic_Soak_20260816.xlsx
 
   - name: Reset
     metrics: [flaps, ber, link_up, temps]
     recovery_commanded: true
-    captures:
-      - label: DUT
-        file: C:/data/R12-TB1-Reset_DUT_20260717.xlsx
-      - label: Ref
-        file: C:/data/R12-TB1-Reset_Ref_20260718.xlsx
+    dut: C:/data/R12-TB1-Reset_DUT_20260717.xlsx
+    ref: C:/data/R12-TB1-Reset_Ref_20260718.xlsx
 ```
+
+A testcase captured once uses `capture:`; one captured as a DUT run and a Ref run uses
+`dut:` and `ref:`. For anything else — three or more runs, or labels other than DUT/Ref
+— use `captures:` instead, a list of files (or `{label, file}` for a labelled one).
 
 | setting | what it does | needed? |
 |---|---|---|
 | `report` | names the deck and its folder, e.g. `output/r12-tb1/r12-tb1.pptx` | yes |
 | `topology` | the Tx/Rx interconnects spreadsheet, for real x-axis labels | no |
 | `name` | the section heading in the deck | yes |
-| `captures` | the test spreadsheets for that testcase | yes |
-| `label` | `DUT` or `Ref`, when one testcase was run twice | no |
+| `capture` | the one spreadsheet, for a testcase run once | one of these three |
+| `dut`, `ref` | the two spreadsheets, for a testcase run as DUT and Ref | |
+| `captures` | a list of spreadsheets, for anything `capture`/`dut`/`ref` can't say | |
 | `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `link_up`, `temps`. Omit to chart all | no |
 | `recovery_commanded` | `true` if this test tells links to come back up | no |
 

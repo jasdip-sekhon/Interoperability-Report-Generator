@@ -38,7 +38,27 @@ def _resolve(path):
 
 
 def _capture_entries(testcase):
-    """[(label, path)] for this testcase. A bare path has no label."""
+    """[(label, path)] for this testcase.
+
+    The common shapes write flat - `capture:` for one file, `dut:`/`ref:` for a
+    pair - so a config never needs the list-of-dicts form unless a testcase has more
+    than two runs or labels other than DUT/Ref. `captures:` still does that, in full.
+    """
+    flat = {key for key in ("capture", "dut", "ref") if key in testcase}
+    if flat and "captures" in testcase:
+        raise ValueError(f"testcase '{testcase['name']}' has both {sorted(flat)} and "
+                         f"'captures' - use one or the other, not both.")
+
+    if "capture" in testcase:
+        return [(None, testcase["capture"])]
+    if flat:
+        entries = []
+        if "dut" in testcase:
+            entries.append(("DUT", testcase["dut"]))
+        if "ref" in testcase:
+            entries.append(("Ref", testcase["ref"]))
+        return entries
+
     entries = []
     for capture in testcase["captures"]:
         if isinstance(capture, dict):

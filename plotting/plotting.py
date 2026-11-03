@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
+from matplotlib.ticker import MaxNLocator
 
 STYLE_PATH = Path(__file__).parent / "plotting_style.yaml"
 with open(STYLE_PATH) as f:
@@ -113,6 +114,8 @@ class Plots:
         axes.bar(x, heights, color=colors)
         if log:
             self._set_log_scale(axes, [heights])
+        # a bar's height is a count, never a fraction of one
+        axes.yaxis.set_major_locator(MaxNLocator(integer=True))
 
         # a zero-height bar draws nothing, which looks exactly like the gap left by a
         # key that was never measured. Mark the measured zeros so "counted, none found"
@@ -124,7 +127,17 @@ class Plots:
         if zero_x:
             axes.scatter(zero_x, [0] * len(zero_x), marker="_", s=260, linewidths=2.5,
                          color=self.style["DEFAULT_COLOR"], zorder=3)
-        axes.set_ylim(bottom=0)
+
+        # when every bar is 0, matplotlib autoscales to a sliver of an axis - too
+        # narrow for any integer tick but 0 to fit, so it falls back to fractions
+        tallest = 0
+        for height in heights:
+            if height == height and height > tallest:
+                tallest = height
+        if tallest == 0:
+            axes.set_ylim(bottom=0, top=1)
+        else:
+            axes.set_ylim(bottom=0)
 
         self._set_category_ticks(axes, labels)
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)
