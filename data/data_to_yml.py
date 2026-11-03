@@ -1,17 +1,14 @@
-"""One capture spreadsheet into one measurement yaml.
-
-Sequences the stages and decides what a missing sheet means. Imports run one way:
-
-    data_to_yml -> {collect, meta, sheets, cache} -> parse
-
-A section is null when its sheet was absent - "could not look" - which is a different
-fact from an empty list meaning "looked, found nothing".
-"""
+"""One capture spreadsheet into one measurement yaml. Imports run one way: data_to_yml
+-> {collect, meta, sheets, cache} -> parse."""
 
 from pathlib import Path
+import sys
 
 from openpyxl import load_workbook
 import yaml
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import info, line                                 # noqa: E402
 
 from cache import _source_stamp, is_current
 from collect import (collect_ber_from_vdm, collect_link_flaps, collect_link_up,
@@ -22,36 +19,28 @@ from parse import _log_timestamps
 from sheets import _find_sheet, _find_sheet_with_column, _read_sheet, _sheet_records
 
 def _detect_test_type(wb):
-    """Guess the testcase from the sheets present.
-
-    This can only tell a reset from everything else, and "everything else" includes
-    shut/no-shut and the lane tests as well as soak - which matters, because the
-    never_recovered signal is meaningful for all of those but not for soak. A caller
-    that knows the testcase should say so rather than rely on this.
-    """
+    """Guess the testcase from the sheets present: only a reset is distinguishable
+    from everything else, so a caller that knows the testcase should say so instead."""
     if _find_sheet(wb, "module_reset", required=False) is None:
         return "soak"
     return "reset"
 
 def _collect_fec_metrics(wb, module_records, test_type):
-    """BER (soak only), plus the two counter metrics every test_type gets."""
+    """BER (soak only) plus the two counter metrics every test_type gets; the summary
+    line already says when BER is absent, so only its source is printed here."""
     fec_sheet = _find_sheet(wb, "get_fec_counter", required=False)
     if fec_sheet is not None:
         fec_records = _read_sheet(fec_sheet)
         tcode = collect_tcode(fec_records)
         uncorrected_cw = collect_uncorrected_cw(fec_records)
         if test_type != "soak":
-            print("  Info: BER is only collected for a soak; this capture's FEC "
-                  "counter still provides T-Code and uncorrected codewords.")
             return None, None, tcode, uncorrected_cw
-        print("  Info: BER read from the switch ASIC's '*get_fec_counter'.")
+        info("BER from the switch's FEC counter.")
         return collect_pre_fec_ber(fec_records), "fec_counter", tcode, uncorrected_cw
     if module_records is not None:
         if test_type != "soak":
-            print("  Info: BER is only collected for a soak; this capture has none.")
             return None, None, None, None
-        print("  Info: no '*get_fec_counter' sheet; using the module's own VDM "
-              "Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.")
+        info("BER from the module's own VDM reading (no FEC counter sheet).")
         return collect_ber_from_vdm(module_records), "vdm", None, None
     return None, None, None, None
 
@@ -59,21 +48,38 @@ def _collect_link_up_metrics(wb):
     # named after whichever action produced it, so found by its column
     sheet = _find_sheet_with_column(wb, "LinkUpTime")
     if sheet is None:
-        print("  Info: no sheet carries a 'LinkUpTime' column; link-up times are "
-              "unavailable.")
         return None
     return collect_link_up(_read_sheet(sheet))
 
-def _report_sections(test_type, measurements):
+def _section_counts(measurements, sections):
     counts = []
-    for section in ("flaps", "ber", "tcode", "uncorrected_cw", "link_up",
-                    "temps", "sensors"):
+    for section in sections:
         value = measurements[section]
         if value is None:
             counts.append(f"{section} --")
         else:
             counts.append(f"{section} {len(value)}")
-    print(f"  {test_type} capture | " + " | ".join(counts))
+    return ", ".join(counts)
+
+
+def _report_sections(test_type, measurements):
+    """Three units in one line otherwise read as the same kind of number: a lane, an
+    optic (one per port, shared by its lanes), and a switch."""
+    lanes = _section_counts(measurements, ("flaps", "ber", "tcode",
+                                           "uncorrected_cw", "link_up"))
+    modules = _section_counts(measurements, ("temps",))
+    switches = _section_counts(measurements, ("sensors",))
+    line(f"{test_type} capture | per lane: {lanes} | per module: {modules} "
+         f"| per switch: {switches}")
+
+def report_cached_capture(data, yml_file):
+    """The same two lines a conversion prints, so a reused capture is still named and
+    counted in the log rather than hidden behind a "reused" tally."""
+    print(f"{Path(data).name} (reused)")
+    with open(yml_file, encoding="utf-8") as f:
+        measurements = yaml.safe_load(f)
+    _report_sections(measurements["meta"]["test_type"], measurements)
+
 
 def _read_capture(wb):
     """The four sheets the measurements come from. A missing one reads as None."""
@@ -90,11 +96,8 @@ def _read_capture(wb):
 
 
 def collect_measurements(wb, test_type, recovery_commanded):
-    """Every section of one capture.
-
-    A section is null when its sheet was absent - "could not look", which is a
-    different fact from an empty list meaning "looked, found nothing".
-    """
+    """Every section of one capture; a section is null when its sheet was absent,
+    which is a different fact from an empty list meaning "found nothing"."""
     log_records, flap_records, module_records, sensor_records = _read_capture(wb)
 
     if log_records is None:
@@ -141,12 +144,6 @@ def collect_measurements(wb, test_type, recovery_commanded):
         "temps": temps,
         "sensors": sensors,
     }
-
-
-
-
-
-
 
 
 def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):

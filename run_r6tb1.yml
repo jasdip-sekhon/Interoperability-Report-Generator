@@ -11,13 +11,14 @@ topology: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Rack6_TB1_Tx_Rx_Inter
 testcases:
   - name: Soak
     # a soak watches error rate over time; links are never taken down
-    metrics: [ber, tcode, temps]
+    metrics: [flaps, ber, tcode, uncorrected_cw, temps]
     captures:
       - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
 
   - name: Reset
-    # a reset is about how links come back, and whether they come back clean
-    metrics: [flaps, ber, link_up, temps]
+    # a reset is about how links come back, and whether they come back clean; BER is
+    # soak-only, so this testcase never has it (see data_to_yml._collect_fec_metrics)
+    metrics: [flaps, link_up, temps]
     recovery_commanded: true
     captures:
       - label: DUT

@@ -3,9 +3,13 @@
 The manifest is the whole contract with deck/, which never learns what a metric is.
 """
 
+import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import say                                        # noqa: E402
 
 MANIFEST_NAME = "manifest.yml"
 
@@ -26,7 +30,7 @@ def clear_output_dir(out_dir):
             chart_word = "chart"
         else:
             chart_word = "charts"
-        print(f"  Cleared {removed} {chart_word} from {out_dir.name}/")
+        say(f"Cleared {removed} {chart_word} from {out_dir.name}/")
 
 
 def output_path(filename, out_dir):
@@ -78,5 +82,5 @@ def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
         chart_word = "chart"
     else:
         chart_word = "charts"
-    print(f"  Wrote {len(charts)} {chart_word} and {path.name}")
+    say(f"Wrote {len(charts)} {chart_word} and {path.name}")
     return path

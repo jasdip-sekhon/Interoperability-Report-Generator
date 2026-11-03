@@ -62,8 +62,12 @@ def _start_offsets(runs):
 
 
 
-def merge_runs(paths, out_path, labels=None):
-    """labels names each run in the printed summary; the filename if none is given."""
+def merge_runs(paths, out_path, labels=None, quiet=False):
+    """labels names each run in the printed summary; the filename if none is given.
+
+    quiet reduces the summary to one line: nothing reads the merged yaml, so for a
+    DUT/Ref pair its reconciliation is not a result, and reads as one when skimmed.
+    """
     if labels is None:
         labels = []
         for path in paths:
@@ -74,7 +78,7 @@ def merge_runs(paths, out_path, labels=None):
         runs.append(_load(path))
 
     offsets = _start_offsets(runs)
-    flaps, conflicts = merge_flaps(runs)
+    flaps, conflicts = merge_flaps(runs, quiet)
     meta = merge_meta(runs, labels)
 
     # where one run ends and the next begins on the shared timeline. Nothing was
@@ -100,7 +104,7 @@ def merge_runs(paths, out_path, labels=None):
         yaml.dump(merged, f, default_flow_style=False, sort_keys=False)
     partial.replace(out_path)
 
-    _report(runs, labels, merged, offsets, conflicts)
+    _report(runs, labels, merged, offsets, conflicts, out_path, quiet)
     return merged
 
 

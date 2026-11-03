@@ -4,6 +4,12 @@ Flags intersect, readings concatenate, flap counts take the highest. A wrong rul
 produces output that looks entirely plausible.
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import warn                                       # noqa: E402
+
 MAX_LISTED_CONFLICTS = 5
 
 def _index(records, fields):
@@ -48,9 +54,9 @@ def _fill_switch_gaps(held, info, switch, first_label, label):
         if held[field] is None:
             held[field] = value
         elif value is not None and value != held[field]:
-            print(f"  Warning: switch {switch} reports {field} '{held[field]}' in "
-                  f"{first_label} but '{value}' in {label}; keeping '{held[field]}'. "
-                  "The two runs may not be the same population.")
+            warn(f"switch {switch} reports {field} '{held[field]}' in {first_label} "
+                 f"but '{value}' in {label}; keeping '{held[field]}'. The two runs may "
+                 f"not be the same population.")
 
 
 def _union_switches(runs, labels):
@@ -136,14 +142,14 @@ def _report_count_conflict(key, counts, kept, conflicts):
         for count in sorted(counts):
             counts_text.append(str(count))
         counts_text = ", ".join(counts_text)
-        print(f"  Warning: switch {switch} port {port} lane {lane} flap count "
-              f"differs across runs ({counts_text}); keeping {kept}.")
+        warn(f"switch {switch} port {port} lane {lane} flap count differs across "
+             f"runs ({counts_text}); keeping {kept}.")
     elif conflicts == MAX_LISTED_CONFLICTS + 1:
-        print("  Warning: further flap-count disagreements not listed "
-              "individually; see the count below.")
+        warn("further flap-count disagreements not listed individually; see the "
+             "count below.")
 
 
-def merge_flaps(runs):
+def merge_flaps(runs, quiet=False):
     merged = []
     conflicts = 0
     by_lane = _flaps_by_lane(runs)
@@ -154,7 +160,9 @@ def merge_flaps(runs):
         counts = _distinct_counts(records)
         if len(counts) > 1:
             conflicts = conflicts + 1
-            _report_count_conflict(key, counts, count, conflicts)
+            # quiet: reconciling DUT against Ref is not a result anyone should read
+            if not quiet:
+                _report_count_conflict(key, counts, count, conflicts)
         merged.append({
             "switch": switch,
             "port": port,

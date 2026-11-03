@@ -3,6 +3,12 @@
 None always means not measured. Deciding a sheet is missing is the caller's job.
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import info                                       # noqa: E402
+
 from parse import (_elapsed_hours, _group_by_lane, _lanes_to_records, _norm_switch,
                    _parse_temp)
 
@@ -117,8 +123,8 @@ def collect_temps(module_records, timestamps):
             reading_word = "reading"
         else:
             reading_word = "readings"
-        print(f"  Info: {unmatched} module temperature {reading_word} had no "
-              f"matching log timestamp and were dropped.")
+        info(f"{unmatched} module temperature {reading_word} had no matching log "
+             f"timestamp and were dropped.")
 
     temp_data = []
     for module_key in modules:
@@ -160,8 +166,8 @@ def collect_sensors(sensor_records, timestamps):
             reading_word = "reading"
         else:
             reading_word = "readings"
-        print(f"  Info: {unmatched} sensor {reading_word} had no matching log "
-              f"timestamp and were dropped.")
+        info(f"{unmatched} sensor {reading_word} had no matching log timestamp and "
+             f"were dropped.")
 
     sensor_data = []
     for switch in switches:

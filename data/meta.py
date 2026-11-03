@@ -3,6 +3,12 @@
 The temperature spec belongs to the switch: a rack can mix optics rated 70C and 75C.
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import warn                                       # noqa: E402
+
 from parse import _norm_switch, _parse_temp
 
 def _switch_identity(log_records):
@@ -35,8 +41,11 @@ def _one_rating(values, switch, field):
     one line cannot represent them all.
     """
     if len(values) > 1:
-        print(f"  Warning: switch {switch} has modules rated {sorted(values)} "
-              f"for {field}; keeping {values[0]}.")
+        rated = []
+        for value in sorted(values):
+            rated.append(str(value))
+        warn(f"switch {switch} has modules rated {', '.join(rated)} for {field}; "
+             f"keeping {values[0]}.")
     if not values:
         return None
     return values[0]

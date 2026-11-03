@@ -9,15 +9,19 @@ plotting.py is the generic chart library and imports none of the others.
 """
 
 from pathlib import Path
+import sys
 import yaml
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import info, line, say, short_path, warn         # noqa: E402
 
 from charts import (draw_ber, draw_flaps_by_interconnect, draw_flaps_by_switch,
                     draw_link_up, draw_tcode, draw_temperature_over_time,
-                    draw_temperature_per_port)
+                    draw_temperature_per_port, draw_uncorrected_cw)
 from output import clear_output_dir, _sort_by_scope, _write_manifest
 from x_axis import (build_interconnect_axis, build_measured_axis,
                     build_measured_switches, build_port_vendors, build_switch_axis,
-                    topology_source)
+                    report_uncharted_lanes, topology_source)
 
 PROJECT_ROOT = Path(__file__).parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "output"
@@ -25,7 +29,7 @@ INTERCONNECTS_YML = PROJECT_ROOT / "interconnects" / "interconnects.yml"
 MEASUREMENTS_DIR = PROJECT_ROOT / "data" / "output"
 
 # what a testcase can ask to chart, named after the measurement yaml's sections
-METRICS = ("flaps", "ber", "tcode", "link_up", "temps")
+METRICS = ("flaps", "ber", "tcode", "uncorrected_cw", "link_up", "temps")
 
 
 def load_yaml(path):
@@ -33,11 +37,36 @@ def load_yaml(path):
         return yaml.safe_load(f)
     
 
+def load_axis(interconnects_yml):
+    """The topology, read once per report. Re-reading it per testcase lets a run that
+    writes the same path change the axis partway through, which charts as silent gaps."""
+    if interconnects_yml is None:
+        return None
+    if not Path(interconnects_yml).exists():
+        return None
+    return {"interconnects": load_yaml(interconnects_yml),
+            "source": short_path(topology_source(interconnects_yml))}
+
+
 def _wanted(metrics, name):
     """Every metric unless the testcase named a subset."""
     if metrics is None:
         return True
     return name in metrics
+
+
+def _report_empty_metrics(metrics, drawn):
+    """A metric the config asks for that the capture never measured: the config and the
+    data have drifted apart, and a silently missing chart is how that stays hidden."""
+    if metrics is None:
+        return
+    empty = []
+    for name in metrics:
+        if name in METRICS and name not in drawn:
+            empty.append(name)
+    if empty:
+        warn(f"{', '.join(empty)} configured for this testcase but not measured in "
+             f"this capture; no chart drawn.")
 
 
 def _report_unknown_metrics(metrics):
@@ -50,12 +79,12 @@ def _report_unknown_metrics(metrics):
             metric_word = "metric"
         else:
             metric_word = "metrics"
-        print(f"  Warning: configured {metric_word} {', '.join(unknown)} are not drawn "
-              f"by anything; known metrics are {', '.join(METRICS)}.")
+        warn(f"configured {metric_word} {', '.join(unknown)} are not drawn by "
+             f"anything; known metrics are {', '.join(METRICS)}.")
 
 
 def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YML,
-                   testcase=None, metrics=None):
+                   testcase=None, metrics=None, axis=None):
     measurements = load_yaml(measurements_yml)
     meta = measurements["meta"]
     if meta["ber_source"] is None:
@@ -71,16 +100,20 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
     print(f"{heading} ({meta['test_type']}, {ber_note})")
     clear_output_dir(out_dir)
 
-    if interconnects_yml and Path(interconnects_yml).exists():
-        interconnects = load_yaml(interconnects_yml)
-        print(f"  Interconnect order from {topology_source(interconnects_yml)}, "
-              f"{len(interconnects)} interconnects")
+    if axis is None:
+        axis = load_axis(interconnects_yml)
+
+    if axis is not None:
+        interconnects = axis["interconnects"]
+        line(f"Interconnect order from {axis['source']}, {len(interconnects)} "
+             f"interconnects")
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
         vendors = build_port_vendors(interconnects)
+        report_uncharted_lanes(measurements, keys)
     else:
-        print("  Info: no topology file; ordering interconnects from the measurements "
-              "themselves, so entries are named rather than described.")
+        info("no topology file; ordering interconnects from the measurements "
+             "themselves, so entries are named rather than described.")
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)
         vendors = {}
@@ -92,30 +125,56 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         at = []
         for seam in seams:
             at.append(f"{seam:.1f}h")
-        print(f"  Info: merged capture; lines break at {len(seams)} run boundary "
-              f"({', '.join(at)}) where nothing was measured.")
+        info(f"merged capture; lines break at {len(seams)} run boundary "
+             f"({', '.join(at)}) where nothing was measured.")
 
     if metrics is not None:
         _report_unknown_metrics(metrics)
-        print(f"  Charting {', '.join(metrics)}; this testcase measures nothing else.")
 
+    # what was charted is what the draw_* calls returned, not what the config asked
+    # for: a metric the capture never measured draws nothing and must not be claimed
     charts = []
+    drawn = []
     if _wanted(metrics, "flaps"):
+        before = len(charts)
         charts.extend(draw_flaps_by_switch(measurements, switch_keys, switch_labels,
                                            out_dir))
         charts.extend(draw_flaps_by_interconnect(measurements, meta, keys, labels,
                                                  out_dir))
+        if len(charts) > before:
+            drawn.append("flaps")
     if _wanted(metrics, "ber"):
+        before = len(charts)
         charts.extend(draw_ber(measurements, meta, keys, labels, out_dir))
+        if len(charts) > before:
+            drawn.append("ber")
     if _wanted(metrics, "tcode"):
+        before = len(charts)
         charts.extend(draw_tcode(measurements, meta, keys, labels, out_dir))
+        if len(charts) > before:
+            drawn.append("tcode")
+    if _wanted(metrics, "uncorrected_cw"):
+        before = len(charts)
+        charts.extend(draw_uncorrected_cw(measurements, meta, keys, labels, out_dir))
+        if len(charts) > before:
+            drawn.append("uncorrected_cw")
     if _wanted(metrics, "link_up"):
+        before = len(charts)
         charts.extend(draw_link_up(measurements, meta, keys, labels, out_dir))
+        if len(charts) > before:
+            drawn.append("link_up")
     if _wanted(metrics, "temps"):
+        before = len(charts)
         charts.extend(draw_temperature_over_time(measurements, meta, switch_keys, seams,
                                                  out_dir))
         charts.extend(draw_temperature_per_port(measurements, meta, switch_keys, vendors,
                                                 out_dir))
+        if len(charts) > before:
+            drawn.append("temps")
+
+    if drawn:
+        say(f"Charting {', '.join(drawn)}")
+    _report_empty_metrics(metrics, drawn)
 
     return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir, testcase)
 

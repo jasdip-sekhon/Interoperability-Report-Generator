@@ -3,6 +3,12 @@
 The active sheet is whichever was open when the file was saved, so sheets go by name.
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import warn                                       # noqa: E402
+
 def _find_sheet(wb, sheet_name, required=True):
     # Search for a sheet by name, allowing for a numeric prefix before an underscore
     for name in wb.sheetnames:
@@ -30,7 +36,7 @@ def _sheet_records(wb, sheet_name, consequence):
     # section rather than the whole file — but say which chart goes dark because of it
     sheet = _find_sheet(wb, sheet_name, required=False)
     if sheet is None:
-        print(f"  Warning: no '*{sheet_name}' sheet; {consequence}.")
+        warn(f"no '*{sheet_name}' sheet; {consequence}.")
         return None
     return _read_sheet(sheet)
 

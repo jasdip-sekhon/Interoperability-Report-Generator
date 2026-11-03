@@ -267,18 +267,6 @@ class Plots:
         axes.legend(loc="upper left", frameon=True)
 
     def value_series(self, data, keys, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, overlay_points=None, overlay_label="Overlay"):
-        """One line per key over a continuous x axis, coloured by its own value.
-
-        Colour and height both encode the value, so a series can be read for level and
-        for trend at once, and the colourbar makes the scale comparable between charts.
-
-        There are no category labels and no per-key colours: a key is identified by
-        where its line sits, not by a legend that would need one entry per line.
-
-        overlay_points is a single extra series drawn as a plain dark line on top - a
-        reference the other series are read against. It is labelled by overlay_label,
-        and is the only series that appears in the legend.
-        """
         if not keys:
             return False
         figure, axes = plt.subplots(figsize=(12, 6))

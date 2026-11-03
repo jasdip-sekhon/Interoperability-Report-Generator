@@ -13,11 +13,15 @@ Scope appears in no name: _draw_per_switch gives every interconnect chart one fi
 switch, and the manifest carries the result for the deck builder to group slides on.
 """
 
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import info, warn                                 # noqa: E402
 
 from layout import _draw_per_switch, _switch_info, plots
 from output import output_path
-from x_axis import _report_unmatched
+from x_axis import _report_unmatched, report_link_up_coverage
 
 SATURATED_BER = 0.5  # BER >= 0.5 is the counter saturating, not a real reading
 SENSOR_LABEL = "Board Sensor"
@@ -27,6 +31,7 @@ SPEC_BER = 2e-6
 SPEC_TCODE = 6
 SPEC_LINK_UP_RESET_S = 30
 SPEC_LINK_UP_SHUT_S = 20
+SPEC_UNCORRECTED_CW = 0
 
 
 def _totals_per_switch(records):
@@ -94,8 +99,12 @@ def _lane_values(records, drop_at_or_above=None):
         if record["lane"] == 0:
             values[(record["switch"], record["port"], 1)] = clean
     if dropped:
-        print(f"  Info: ignored {dropped} reading(s) at or above {drop_at_or_above} as "
-              f"saturated; a link that wrong is a coin flip, not a measurement.")
+        if dropped == 1:
+            reading_word = "reading"
+        else:
+            reading_word = "readings"
+        info(f"ignored {dropped} {reading_word} at or above {drop_at_or_above} as "
+             f"saturated; a link that wrong is a coin flip, not a measurement.")
     return values
 
 
@@ -125,6 +134,21 @@ def draw_tcode(measurements, meta, keys, labels, out_dir):
                             spec_max=SPEC_TCODE)
 
 
+def draw_uncorrected_cw(measurements, meta, keys, labels, out_dir):
+    """Codewords FEC could not repair - whether it kept up, where BER says how hard it
+    worked. Same shape and sheet as T-Code, so the same chart family."""
+    records = measurements["uncorrected_cw"]
+    if records is None:
+        return []
+    values = _lane_values(records)
+    _report_unmatched(keys, values, "uncorrected codeword")
+    return _draw_per_switch(plots.dot_plot, values, keys, labels, meta,
+                            stem="uncorrected_cw_dot", metric="Uncorrected codewords",
+                            title="Uncorrected codewords by interconnect",
+                            ylabel="Uncorrected codewords", out_dir=out_dir,
+                            spec_max=SPEC_UNCORRECTED_CW)
+
+
 def _link_up_spec(meta):
     """How long a link may take to come back, which depends on what took it down."""
     if meta["test_type"].startswith("reset"):
@@ -137,7 +161,7 @@ def draw_link_up(measurements, meta, keys, labels, out_dir):
     if records is None:
         return []
     values = _lane_values(records)
-    _report_unmatched(keys, values, "link-up")
+    report_link_up_coverage(records, keys)
     return _draw_per_switch(plots.box_plot, values, keys, labels, meta,
                             stem="link_up_box", metric="Link-up time",
                             title="Link-up time by interconnect",
@@ -233,9 +257,9 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
             switch_word = "switch has"
         else:
             switch_word = "switches have"
-        print(f"  Warning: {len(flat_switches)} {switch_word} a single temperature "
-              f"sample per module ({', '.join(flat_switches)}); their charts show "
-              f"points rather than a trend over time.")
+        warn(f"{len(flat_switches)} {switch_word} a single temperature sample per "
+             f"module ({', '.join(flat_switches)}); their charts show points rather "
+             f"than a trend over time.")
     return drawn
 
 
