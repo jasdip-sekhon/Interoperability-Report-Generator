@@ -8,7 +8,7 @@ overwrite each other's charts.
 from pathlib import Path
 import sys
 
-from console import short_path, warn
+from console import header, line, short_path, warn
 
 PROJECT_ROOT = Path(__file__).parent
 # the stages are sibling scripts rather than a package, so they import each other by
@@ -135,7 +135,7 @@ def _check_report_owner(report_dir, target):
         if previous and previous != owner:
             warn(f"output/{report_dir.name}/ was last written by {short_path(previous)}, "
                  f"which this run overwrites. Two configs naming the same report share "
-                 f"one folder; give them different 'report:' names.")
+                 f"one folder; give them different 'report:' names")
     stamp.write_text(owner, encoding="utf-8")
 
 
@@ -155,10 +155,13 @@ def run(target, topology=None, use_cache=True):
     # read once, not per testcase: a concurrent run writing the same path must not be
     # able to change the axis partway through a report
     axis = load_axis(build_x_axis(topology, report_dir))
+    if axis is not None:
+        line(f"Interconnect order from {axis['source']}, "
+             f"{len(axis['interconnects'])} interconnects")
 
     manifests = []
     for testcase in config["testcases"]:
-        print(f"\n== {testcase['name']} ==")
+        header(testcase["name"])
         for label, measurements in prepare_measurements(testcase, use_cache):
             name = testcase["name"]
             if label:
@@ -167,7 +170,7 @@ def run(target, topology=None, use_cache=True):
                                             None, name,
                                             testcase.get("metrics"), axis))
 
-    print("\n== deck ==")
+    header("Deck")
     deck_path = report_dir / f"{_slug(report)}.pptx"
     build_deck(manifests, deck_path, report)
     return deck_path

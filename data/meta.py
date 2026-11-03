@@ -45,7 +45,7 @@ def _one_rating(values, switch, field):
         for value in sorted(values):
             rated.append(str(value))
         warn(f"switch {switch} has modules rated {', '.join(rated)} for {field}; "
-             f"keeping {values[0]}.")
+             f"keeping {values[0]}")
     if not values:
         return None
     return values[0]

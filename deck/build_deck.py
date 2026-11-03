@@ -11,9 +11,13 @@ first, then one group per switch.
 
 from pathlib import Path
 import argparse
+import sys
 
 import yaml
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from console import short_path                                 # noqa: E402
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.util import Inches, Pt
@@ -256,7 +260,7 @@ def build_deck(manifest_paths, out_path, report="Report"):
         testcase_word = "testcase"
     else:
         testcase_word = "testcases"
-    print(f"\nWrote {out_path}\n"
+    print(f"\nWrote {short_path(out_path)}\n"
           f"  {slides} slides from {charts} {chart_word} across "
           f"{len(manifests)} {testcase_word}")
     return presentation

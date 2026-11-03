@@ -124,7 +124,7 @@ def collect_temps(module_records, timestamps):
         else:
             reading_word = "readings"
         info(f"{unmatched} module temperature {reading_word} had no matching log "
-             f"timestamp and were dropped.")
+             f"timestamp and were dropped")
 
     temp_data = []
     for module_key in modules:
@@ -167,7 +167,7 @@ def collect_sensors(sensor_records, timestamps):
         else:
             reading_word = "readings"
         info(f"{unmatched} sensor {reading_word} had no matching log timestamp and "
-             f"were dropped.")
+             f"were dropped")
 
     sensor_data = []
     for switch in switches:

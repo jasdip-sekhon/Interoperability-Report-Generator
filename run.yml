@@ -6,7 +6,9 @@
 # hardware, so merging them would seam every time series. The merged yaml is still
 # written, for the analysis stage that needs the union.
 
-report: R12-TB1
+# a name of its own: sharing one with a real rack's config would put the fixtures and
+# that rack in the same output/ folder, each overwriting the other's axis and charts
+report: Demo
 
 topology: references/interconnects_sample.xlsx
 

@@ -35,12 +35,12 @@ def _collect_fec_metrics(wb, module_records, test_type):
         uncorrected_cw = collect_uncorrected_cw(fec_records)
         if test_type != "soak":
             return None, None, tcode, uncorrected_cw
-        info("BER from the switch's FEC counter.")
+        info("BER from the switch's FEC counter")
         return collect_pre_fec_ber(fec_records), "fec_counter", tcode, uncorrected_cw
     if module_records is not None:
         if test_type != "soak":
             return None, None, None, None
-        info("BER from the module's own VDM reading (no FEC counter sheet).")
+        info("BER from the module's own VDM reading (no FEC counter sheet)")
         return collect_ber_from_vdm(module_records), "vdm", None, None
     return None, None, None, None
 

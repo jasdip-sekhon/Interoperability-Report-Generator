@@ -19,18 +19,15 @@ def ensure_output_dir(out_dir):
 
 
 def clear_output_dir(out_dir):
+    """Returns how many charts were cleared, so the count is reported beside the count
+    written: the two side by side are what shows a run charting a different axis."""
     out_dir = Path(out_dir)
     ensure_output_dir(out_dir)
     removed = 0
     for path in out_dir.glob("*.png"):
         path.unlink()
         removed = removed + 1
-    if removed:
-        if removed == 1:
-            chart_word = "chart"
-        else:
-            chart_word = "charts"
-        say(f"Cleared {removed} {chart_word} from {out_dir.name}/")
+    return removed
 
 
 def output_path(filename, out_dir):
@@ -61,7 +58,7 @@ def _sort_by_scope(charts):
     return ordered
 
 
-def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
+def _write_manifest(measurements_yml, meta, charts, out_dir, testcase, replaced=0):
     """Declare what was drawn, in the order it should be presented."""
     if testcase is None:
         testcase = meta["test_type"]
@@ -82,5 +79,8 @@ def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
         chart_word = "chart"
     else:
         chart_word = "charts"
-    say(f"Wrote {len(charts)} {chart_word} and {path.name}")
+    replaced_note = ""
+    if replaced:
+        replaced_note = f" (replaced {replaced})"
+    say(f"Wrote {len(charts)} {chart_word} and {path.name}{replaced_note}")
     return path

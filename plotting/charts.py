@@ -23,6 +23,17 @@ from layout import _draw_per_switch, _switch_info, plots
 from output import output_path
 from x_axis import _report_unmatched, report_link_up_coverage
 
+# a metric named in a sentence, not by its run.yml key: the key is what you type, the
+# name is what you read, and a log mixing the two reads as two different logs
+METRIC_NAMES = {
+    "flaps": "link flaps",
+    "ber": "BER",
+    "tcode": "T-Code",
+    "uncorrected_cw": "uncorrected codewords",
+    "link_up": "link-up time",
+    "temps": "temperature",
+}
+
 SATURATED_BER = 0.5  # BER >= 0.5 is the counter saturating, not a real reading
 SENSOR_LABEL = "Board Sensor"
 
@@ -104,7 +115,7 @@ def _lane_values(records, drop_at_or_above=None):
         else:
             reading_word = "readings"
         info(f"ignored {dropped} {reading_word} at or above {drop_at_or_above} as "
-             f"saturated; a link that wrong is a coin flip, not a measurement.")
+             f"saturated; a link that wrong is a coin flip, not a measurement")
     return values
 
 
@@ -259,7 +270,7 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
             switch_word = "switches have"
         warn(f"{len(flat_switches)} {switch_word} a single temperature sample per "
              f"module ({', '.join(flat_switches)}); their charts show points rather "
-             f"than a trend over time.")
+             f"than a trend over time")
     return drawn
 
 

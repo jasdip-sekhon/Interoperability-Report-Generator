@@ -56,7 +56,7 @@ def _fill_switch_gaps(held, info, switch, first_label, label):
         elif value is not None and value != held[field]:
             warn(f"switch {switch} reports {field} '{held[field]}' in {first_label} "
                  f"but '{value}' in {label}; keeping '{held[field]}'. The two runs may "
-                 f"not be the same population.")
+                 f"not be the same population")
 
 
 def _union_switches(runs, labels):
@@ -143,10 +143,10 @@ def _report_count_conflict(key, counts, kept, conflicts):
             counts_text.append(str(count))
         counts_text = ", ".join(counts_text)
         warn(f"switch {switch} port {port} lane {lane} flap count differs across "
-             f"runs ({counts_text}); keeping {kept}.")
+             f"runs ({counts_text}); keeping {kept}")
     elif conflicts == MAX_LISTED_CONFLICTS + 1:
         warn("further flap-count disagreements not listed individually; see the "
-             "count below.")
+             "count below")
 
 
 def merge_flaps(runs, quiet=False):

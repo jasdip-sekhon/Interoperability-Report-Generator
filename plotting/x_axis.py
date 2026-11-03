@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import say, warn                                  # noqa: E402
+from console import say, warn, warn_detail                     # noqa: E402
 
 
 def _topology_key(record):
@@ -125,8 +125,12 @@ def _name_ports(uncharted):
             lanes.append(str(lane))
         named.append(f"switch {switch} port {port} lane {'/'.join(lanes)}")
     listed = ", ".join(named)
-    if len(ports) > MAX_LISTED_UNCHARTED:
-        listed = listed + f", and {len(ports) - MAX_LISTED_UNCHARTED} more ports"
+    rest = len(ports) - MAX_LISTED_UNCHARTED
+    if rest > 0:
+        if rest == 1:
+            listed = listed + ", and 1 more port"
+        else:
+            listed = listed + f", and {rest} more ports"
     return listed
 
 
@@ -144,7 +148,7 @@ def _uncharted_in(records, axis):
     return found
 
 
-def report_uncharted_lanes(measurements, keys):
+def report_uncharted_lanes(measurements, keys, names):
     """Once per capture, not once per metric: the topology describes the rack, so the
     ports it omits are the same for every metric measuring them."""
     axis = set(keys)
@@ -171,9 +175,13 @@ def report_uncharted_lanes(measurements, keys):
         if len(groups) == 1 and len(sections) == len(measured_sections):
             which = "all metrics"
         else:
-            which = ", ".join(sections)
-        warn(f"{len(signature)} measured lanes are absent from the topology ({which}), "
-             f"so they appear in no chart: {_name_ports(signature)}.")
+            named = []
+            for section in sections:
+                named.append(names[section])
+            which = ", ".join(named)
+        warn_detail(f"{len(signature)} measured lanes are absent from the topology "
+                    f"({which}), so they appear in no chart:",
+                    _name_ports(signature))
 
 
 def report_link_up_coverage(records, keys):
@@ -202,20 +210,19 @@ def report_link_up_coverage(records, keys):
         if key not in measured:
             missing.append(key)
 
-    # lanes measured on this side that the topology never described: counted here too,
-    # so the line cannot read as complete coverage when the two sets disagree
-    extra = _uncharted_in(records, set(keys))
-    note = ""
-    if extra:
-        note = f"; {len(extra)} measured lanes are absent from the topology"
+    # lanes measured here but absent from the topology are reported once per capture
+    # by report_uncharted_lanes, so naming them again on this line only repeats it
+    if len(sides) == 1:
+        where = f"switch {sides[0]}"
+    else:
+        where = "switches " + "/".join(sides)
 
-    where = "/".join(sides)
     if missing:
-        warn(f"link-up on {where}: {len(expected) - len(missing)} of {len(expected)} "
-             f"topology lanes measured, {len(missing)} missing "
-             f"({_name_ports(missing)}){note}.")
+        warn_detail(f"link-up on {where}: {len(expected) - len(missing)} of "
+                    f"{len(expected)} topology lanes measured, {len(missing)} missing:",
+                    _name_ports(missing))
         return
-    say(f"link-up on {where}: all {len(expected)} topology lanes measured{note}.")
+    say(f"link-up on {where}: all {len(expected)} topology lanes measured")
 
 
 def _report_unmatched(keys, values, what):
@@ -227,4 +234,4 @@ def _report_unmatched(keys, values, what):
             missing = missing + 1
     if missing:
         warn(f"{missing} of {len(keys)} interconnects have no {what} measurement; "
-             f"they will render as gaps.")
+             f"they will render as gaps")

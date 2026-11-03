@@ -142,6 +142,52 @@ seven times, and flattening that would make it worse. No recursion anywhere; kee
 Line endings are **LF**, normalised by `.gitattributes`. Do not rewrite them when
 editing programmatically - a changed ending is a diff that changes nothing.
 
+## What the log says
+
+The console output is the product, not a diagnostic trace: one engineer runs this, reads
+the narration, and opens the deck. Everything prints through `console.py` - `warn` for a
+`!` line, `info` for a `-` line, `say` for a plain one, `line` for anything that must not
+wrap, `warn_detail` for a sentence followed by an unbroken list.
+
+**Every line must tell the reader something they could not assume.** A policy that never
+varies is not news: BER being soak-only is stated once in the code, not once per capture.
+
+**Say each fact once, at the level it belongs to.** The topology is a property of the
+report, so it is named where it loads, not in all nine testcases. Lanes missing from the
+topology are a property of the capture, so they are reported once per capture rather than
+once per metric.
+
+**A warning means someone should act.** An expected condition is not a warning: link-up
+is only measured on the side that was reset, so counting the other side's lanes as gaps
+always fires and teaches people to skip `!` lines. Count against the side that was
+measured, where anything short of all of them is real.
+
+**Report what happened, not what was planned.** `Charting ...` lists the charts the
+`draw_*` calls actually returned. A configured metric that drew nothing says so.
+
+**Check both directions.** Measured lanes against topology lanes, and topology lanes
+against measured ones. Configured metrics against measured ones, and the reverse. Each
+one-way check this project has had hid half its failures - 5 lanes charted nowhere, with
+no warning, for every real report.
+
+**The text carries the meaning; colour only emphasises.** `!` stays whether or not colour
+survives, because a log is read pasted, redirected and in CI. Colour is yellow for `!`,
+bold for a header, and nothing else; it turns itself off when stdout is not a terminal or
+`NO_COLOR` is set. No Unicode symbols - the older Windows console garbles them.
+
+**One name per metric, one shape per line.** A metric is named (`link flaps`, `T-Code`,
+`uncorrected codewords`) in prose, by its run.yml key (`flaps`, `tcode`) only where the
+line tells you what to type in a config or is a compact field row. Lines are fragments
+with no trailing period; headers are title case.
+
+**Keep it greppable.** Never wrap mid-field or mid-path, and keep a line's shape stable
+between runs so two runs can be diffed.
+
+Computing and printing stay separate: a function returns counts and unmatched sets, and
+the reporting layer decides how they look. `print` is right here - this output is what
+the user asked for, not diagnostics about the program - so `logging` buys nothing until
+there is a real need for levels or a log file.
+
 ## Known rough edges
 
 - A capture is reconverted only when something that changes its yaml changes: the

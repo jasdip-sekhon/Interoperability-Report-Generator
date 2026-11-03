@@ -36,7 +36,7 @@ def _sheet_records(wb, sheet_name, consequence):
     # section rather than the whole file — but say which chart goes dark because of it
     sheet = _find_sheet(wb, sheet_name, required=False)
     if sheet is None:
-        warn(f"no '*{sheet_name}' sheet; {consequence}.")
+        warn(f"no '*{sheet_name}' sheet; {consequence}")
         return None
     return _read_sheet(sheet)
 

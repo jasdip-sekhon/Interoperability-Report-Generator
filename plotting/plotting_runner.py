@@ -15,9 +15,10 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from console import info, line, say, short_path, warn         # noqa: E402
 
-from charts import (draw_ber, draw_flaps_by_interconnect, draw_flaps_by_switch,
-                    draw_link_up, draw_tcode, draw_temperature_over_time,
-                    draw_temperature_per_port, draw_uncorrected_cw)
+from charts import (METRIC_NAMES, draw_ber, draw_flaps_by_interconnect,
+                    draw_flaps_by_switch, draw_link_up, draw_tcode,
+                    draw_temperature_over_time, draw_temperature_per_port,
+                    draw_uncorrected_cw)
 from output import clear_output_dir, _sort_by_scope, _write_manifest
 from x_axis import (build_interconnect_axis, build_measured_axis,
                     build_measured_switches, build_port_vendors, build_switch_axis,
@@ -65,8 +66,11 @@ def _report_empty_metrics(metrics, drawn):
         if name in METRICS and name not in drawn:
             empty.append(name)
     if empty:
-        warn(f"{', '.join(empty)} configured for this testcase but not measured in "
-             f"this capture; no chart drawn.")
+        named = []
+        for name in empty:
+            named.append(METRIC_NAMES[name])
+        warn(f"{', '.join(named)} configured for this testcase but not measured in "
+             f"this capture, so no chart is drawn")
 
 
 def _report_unknown_metrics(metrics):
@@ -80,7 +84,7 @@ def _report_unknown_metrics(metrics):
         else:
             metric_word = "metrics"
         warn(f"configured {metric_word} {', '.join(unknown)} are not drawn by "
-             f"anything; known metrics are {', '.join(METRICS)}.")
+             f"anything; known metrics are {', '.join(METRICS)}")
 
 
 def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YML,
@@ -98,22 +102,26 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
     else:
         heading = testcase
     print(f"{heading} ({meta['test_type']}, {ber_note})")
-    clear_output_dir(out_dir)
+    replaced = clear_output_dir(out_dir)
 
+    # a caller that passed the axis in has already named it; only a standalone run
+    # has to announce it here, and then only once for the one capture it charts
+    announce = axis is None
     if axis is None:
         axis = load_axis(interconnects_yml)
 
     if axis is not None:
         interconnects = axis["interconnects"]
-        line(f"Interconnect order from {axis['source']}, {len(interconnects)} "
-             f"interconnects")
+        if announce:
+            line(f"Interconnect order from {axis['source']}, {len(interconnects)} "
+                 f"interconnects")
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
         vendors = build_port_vendors(interconnects)
-        report_uncharted_lanes(measurements, keys)
+        report_uncharted_lanes(measurements, keys, METRIC_NAMES)
     else:
         info("no topology file; ordering interconnects from the measurements "
-             "themselves, so entries are named rather than described.")
+             "themselves, so entries are named rather than described")
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)
         vendors = {}
@@ -126,7 +134,7 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         for seam in seams:
             at.append(f"{seam:.1f}h")
         info(f"merged capture; lines break at {len(seams)} run boundary "
-             f"({', '.join(at)}) where nothing was measured.")
+             f"({', '.join(at)}) where nothing was measured")
 
     if metrics is not None:
         _report_unknown_metrics(metrics)
@@ -173,10 +181,14 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
             drawn.append("temps")
 
     if drawn:
-        say(f"Charting {', '.join(drawn)}")
+        named = []
+        for name in drawn:
+            named.append(METRIC_NAMES[name])
+        say(f"Charting {', '.join(named)}")
     _report_empty_metrics(metrics, drawn)
 
-    return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir, testcase)
+    return _write_manifest(measurements_yml, meta, _sort_by_scope(charts), out_dir,
+                           testcase, replaced)
 
 
 if __name__ == "__main__":
