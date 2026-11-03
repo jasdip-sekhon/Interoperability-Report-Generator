@@ -62,12 +62,16 @@ def _start_offsets(runs):
 
 
 
-def merge_runs(paths, out_path):
+def merge_runs(paths, out_path, labels=None):
+    """labels names each run in the printed summary; the filename if none is given."""
+    if labels is None:
+        labels = []
+        for path in paths:
+            labels.append(Path(path).name)
+
     runs = []
-    labels = []
     for path in paths:
         runs.append(_load(path))
-        labels.append(Path(path).name)
 
     offsets = _start_offsets(runs)
     flaps, conflicts = merge_flaps(runs)

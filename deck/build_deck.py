@@ -248,8 +248,17 @@ def build_deck(manifest_paths, out_path, report="Report"):
         charts = charts + len(manifest["charts"])
 
     presentation.save(out_path)
-    print(f"Wrote {out_path} - {slides} slides from {charts} chart(s) "
-          f"across {len(manifests)} testcase(s)")
+    if charts == 1:
+        chart_word = "chart"
+    else:
+        chart_word = "charts"
+    if len(manifests) == 1:
+        testcase_word = "testcase"
+    else:
+        testcase_word = "testcases"
+    print(f"\nWrote {out_path}\n"
+          f"  {slides} slides from {charts} {chart_word} across "
+          f"{len(manifests)} {testcase_word}")
     return presentation
 
 

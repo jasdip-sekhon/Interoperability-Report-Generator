@@ -188,8 +188,8 @@ def _sensor_points(records, switch, seams):
     return None
 
 
-def _report_flat_series(switch, temps):
-    # a line needs 2+ samples; warn when it'll render as scattered points instead
+def _is_flat(temps):
+    # a line needs 2+ samples; a flat switch renders as scattered points instead
     longest = 0
     for port in temps:
         real = []
@@ -198,19 +198,19 @@ def _report_flat_series(switch, temps):
                 real.append(point)
         if len(real) > longest:
             longest = len(real)
-    if longest < 2:
-        print(f"  Warning: switch {switch} has a single temperature sample per "
-              f"module, so the chart shows points rather than a trend over time.")
+    return longest < 2
 
 
 def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
     """One chart per switch: its ports are the lines, its board sensor an extra one."""
     drawn = []
+    flat_switches = []
     for switch in keys:
         temps = _temps_per_port(measurements["temps"], switch, seams)
         if not temps:
             continue
-        _report_flat_series(switch, temps)
+        if _is_flat(temps):
+            flat_switches.append(switch)
 
         ports = sorted(temps)
         info, device = _switch_info(meta, switch)
@@ -228,6 +228,14 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
                            overlay_label=SENSOR_LABEL)
         drawn.append({"file": name, "title": title, "scope": switch,
                       "metric": "Module temperature over time"})
+    if flat_switches:
+        if len(flat_switches) == 1:
+            switch_word = "switch has"
+        else:
+            switch_word = "switches have"
+        print(f"  Warning: {len(flat_switches)} {switch_word} a single temperature "
+              f"sample per module ({', '.join(flat_switches)}); their charts show "
+              f"points rather than a trend over time.")
     return drawn
 
 

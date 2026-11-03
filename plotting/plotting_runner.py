@@ -46,27 +46,40 @@ def _report_unknown_metrics(metrics):
         if name not in METRICS:
             unknown.append(name)
     if unknown:
-        print(f"  Warning: configured metric(s) {', '.join(unknown)} are not drawn by "
-              f"anything; known metrics are {', '.join(METRICS)}.")
+        if len(unknown) == 1:
+            metric_word = "metric"
+        else:
+            metric_word = "metrics"
+        print(f"  Warning: configured {metric_word} {', '.join(unknown)} are not drawn "
+              f"by anything; known metrics are {', '.join(METRICS)}.")
 
 
 def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YML,
                    testcase=None, metrics=None):
     measurements = load_yaml(measurements_yml)
     meta = measurements["meta"]
-    print(f"{Path(measurements_yml).name} ({meta['test_type']}, BER from "
-          f"{meta['ber_source']})")
+    if meta["ber_source"] is None:
+        ber_note = "BER not collected"
+    elif meta["ber_source"] == "fec_counter":
+        ber_note = "BER from the switch's FEC counter"
+    else:
+        ber_note = "BER from the module's own VDM reading"
+    if testcase is None:
+        heading = Path(measurements_yml).name
+    else:
+        heading = testcase
+    print(f"{heading} ({meta['test_type']}, {ber_note})")
     clear_output_dir(out_dir)
 
     if interconnects_yml and Path(interconnects_yml).exists():
         interconnects = load_yaml(interconnects_yml)
-        print(f"  x axis from {topology_source(interconnects_yml)}, "
+        print(f"  Interconnect order from {topology_source(interconnects_yml)}, "
               f"{len(interconnects)} interconnects")
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
         vendors = build_port_vendors(interconnects)
     else:
-        print("  Info: no topology file; labelling the x axis from the measurements "
+        print("  Info: no topology file; ordering interconnects from the measurements "
               "themselves, so entries are named rather than described.")
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)

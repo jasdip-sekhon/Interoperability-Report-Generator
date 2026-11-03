@@ -22,7 +22,11 @@ def clear_output_dir(out_dir):
         path.unlink()
         removed = removed + 1
     if removed:
-        print(f"  Cleared {removed} chart(s) from {out_dir.name}/")
+        if removed == 1:
+            chart_word = "chart"
+        else:
+            chart_word = "charts"
+        print(f"  Cleared {removed} {chart_word} from {out_dir.name}/")
 
 
 def output_path(filename, out_dir):
@@ -70,5 +74,9 @@ def _write_manifest(measurements_yml, meta, charts, out_dir, testcase):
         yaml.dump(manifest, f, default_flow_style=False, sort_keys=False,
                   allow_unicode=True)
     partial.replace(path)
-    print(f"  Wrote {len(charts)} chart(s) and {path.name}")
+    if len(charts) == 1:
+        chart_word = "chart"
+    else:
+        chart_word = "charts"
+    print(f"  Wrote {len(charts)} {chart_word} and {path.name}")
     return path

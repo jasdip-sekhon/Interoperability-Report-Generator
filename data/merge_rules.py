@@ -48,7 +48,7 @@ def _fill_switch_gaps(held, info, switch, first_label, label):
         if held[field] is None:
             held[field] = value
         elif value is not None and value != held[field]:
-            print(f"Warning: switch {switch} reports {field} '{held[field]}' in "
+            print(f"  Warning: switch {switch} reports {field} '{held[field]}' in "
                   f"{first_label} but '{value}' in {label}; keeping '{held[field]}'. "
                   "The two runs may not be the same population.")
 
@@ -132,10 +132,14 @@ def _report_count_conflict(key, counts, kept, conflicts):
     summary, so only the first few are named and the rest are counted."""
     switch, port, lane = key
     if conflicts <= MAX_LISTED_CONFLICTS:
-        print(f"Warning: switch {switch} port {port} lane {lane} flap count "
-              f"differs across runs {sorted(counts)}; keeping {kept}.")
+        counts_text = []
+        for count in sorted(counts):
+            counts_text.append(str(count))
+        counts_text = ", ".join(counts_text)
+        print(f"  Warning: switch {switch} port {port} lane {lane} flap count "
+              f"differs across runs ({counts_text}); keeping {kept}.")
     elif conflicts == MAX_LISTED_CONFLICTS + 1:
-        print("Warning: further flap-count disagreements not listed "
+        print("  Warning: further flap-count disagreements not listed "
               "individually; see the count below.")
 
 

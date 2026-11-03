@@ -71,6 +71,10 @@ def config_for(target):
     for capture in captures:
         testcases.append({"name": capture.stem,
                           "captures": [str(capture.resolve())]})
-    print(f"== config == none given; charting {len(testcases)} capture(s) from "
+    if len(testcases) == 1:
+        capture_word = "capture"
+    else:
+        capture_word = "captures"
+    print(f"== config == none given; charting {len(testcases)} {capture_word} from "
           f"{target}, each on its own")
     return {"report": report, "testcases": testcases}

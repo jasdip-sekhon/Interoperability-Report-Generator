@@ -113,7 +113,11 @@ def collect_temps(module_records, timestamps):
         modules[module_key].append([round(hours, 4), temp])
 
     if unmatched:
-        print(f"  Info: {unmatched} module temperature reading(s) had no "
+        if unmatched == 1:
+            reading_word = "reading"
+        else:
+            reading_word = "readings"
+        print(f"  Info: {unmatched} module temperature {reading_word} had no "
               f"matching log timestamp and were dropped.")
 
     temp_data = []
@@ -152,7 +156,11 @@ def collect_sensors(sensor_records, timestamps):
         switches[switch].append([round(hours, 4), float(value)])
 
     if unmatched:
-        print(f"  Info: {unmatched} sensor reading(s) had no matching log "
+        if unmatched == 1:
+            reading_word = "reading"
+        else:
+            reading_word = "readings"
+        print(f"  Info: {unmatched} sensor {reading_word} had no matching log "
               f"timestamp and were dropped.")
 
     sensor_data = []

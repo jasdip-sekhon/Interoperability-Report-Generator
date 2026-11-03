@@ -85,6 +85,7 @@ def prepare_measurements(testcase, use_cache=True):
 
     converted = []
     paths = []
+    labels = []
     reused = 0
     for label, capture in _capture_entries(testcase):
         source = _resolve(capture)
@@ -95,15 +96,20 @@ def prepare_measurements(testcase, use_cache=True):
             data_to_yml(source, target, test_type, recovery_commanded)
         converted.append((label, target))
         paths.append(target)
+        # the merge summary should say "DUT"/"Ref", not an internal yaml filename
+        if label is None:
+            labels.append(target.name)
+        else:
+            labels.append(label)
 
     if reused:
-        print(f"  Reused {reused} of {len(paths)} capture(s); the spreadsheets and the "
+        print(f"  Reused {reused} of {len(paths)} captures; the spreadsheets and the "
               f"converter are unchanged since they were read.")
 
     if len(paths) > 1:
         # not cached: it is seconds, and redoing it keeps it true to its inputs
         merged = MEASUREMENTS_DIR / f"{_slug(testcase['name'])}_merged.yml"
-        merge_runs(paths, merged)
+        merge_runs(paths, merged, labels)
     return converted
 
 

@@ -33,20 +33,23 @@ def _detect_test_type(wb):
         return "soak"
     return "reset"
 
-def _collect_fec_metrics(wb, module_records):
-    """BER, plus the two metrics only the switch ASIC's counter carries.
-
-    The ASIC counter and the optic's own VDM reading are different instruments and must
-    never be pooled, so which one was used travels with the data. T-Code and uncorrected
-    codewords exist only on the counter, so a capture that falls back to VDM has neither.
-    """
+def _collect_fec_metrics(wb, module_records, test_type):
+    """BER (soak only), plus the two counter metrics every test_type gets."""
     fec_sheet = _find_sheet(wb, "get_fec_counter", required=False)
     if fec_sheet is not None:
-        print("  Info: BER read from the switch ASIC's '*get_fec_counter'.")
         fec_records = _read_sheet(fec_sheet)
-        return (collect_pre_fec_ber(fec_records), "fec_counter",
-                collect_tcode(fec_records), collect_uncorrected_cw(fec_records))
+        tcode = collect_tcode(fec_records)
+        uncorrected_cw = collect_uncorrected_cw(fec_records)
+        if test_type != "soak":
+            print("  Info: BER is only collected for a soak; this capture's FEC "
+                  "counter still provides T-Code and uncorrected codewords.")
+            return None, None, tcode, uncorrected_cw
+        print("  Info: BER read from the switch ASIC's '*get_fec_counter'.")
+        return collect_pre_fec_ber(fec_records), "fec_counter", tcode, uncorrected_cw
     if module_records is not None:
+        if test_type != "soak":
+            print("  Info: BER is only collected for a soak; this capture has none.")
+            return None, None, None, None
         print("  Info: no '*get_fec_counter' sheet; using the module's own VDM "
               "Pre-FEC BER instead. T-Code and uncorrected codewords are unavailable.")
         return collect_ber_from_vdm(module_records), "vdm", None, None
@@ -99,7 +102,8 @@ def collect_measurements(wb, test_type, recovery_commanded):
     else:
         timestamps = _log_timestamps(log_records)
 
-    ber, ber_source, tcode, uncorrected_cw = _collect_fec_metrics(wb, module_records)
+    ber, ber_source, tcode, uncorrected_cw = _collect_fec_metrics(wb, module_records,
+                                                                  test_type)
 
     if log_records is None:
         meta_log = []

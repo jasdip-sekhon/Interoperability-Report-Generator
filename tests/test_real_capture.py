@@ -3,7 +3,7 @@
 Every other test either builds its own small input by hand or renders fake data; none
 of them prove the collectors read the right columns out of an actual spreadsheet. This
 reads two fixtures a second, independent way - straight through openpyxl, with none of
-parse.py or collect.py involved - and checks several lanes across four metrics against
+parse.py or collect.py involved - and checks several lanes across five metrics against
 what data_to_yml produced from the same files. One lane of one metric was previously
 checked once, by hand; this is every run, several lanes of each.
 """
@@ -63,21 +63,9 @@ for record in reset["flaps"]:
     actual_flaps[(record["switch"], record["port"], record["lane"])] = record["count"]
 _check(actual_flaps, expected_flaps, "flaps", 5)
 
-col, rows = _sheet(RESET, "3_get_module_info")
-expected_ber = {}
-for row in rows:
-    switch = str(row[col["TreeL1"]])
-    port = row[col["TreeL2"]]
-    for lane in range(1, 9):
-        column = f"VDM_Pre-FEC_BER_Average_Media_Input_Lane_{lane}"
-        if column not in col or row[col[column]] is None:
-            continue
-        expected_ber[(switch, port, lane)] = [row[col[column]]]
-actual_ber = {}
-for record in reset["ber"]:
-    key = (record["switch"], record["port"], record["lane"])
-    actual_ber[key] = record["values"]
-_check(actual_ber, expected_ber, "BER (VDM)", 5)
+# BER is soak-only, even though this fixture's module info does carry VDM columns
+assert reset["ber"] is None, "BER must not be collected for a non-soak test_type"
+print("ok  BER: not collected for a functional test, even though this capture has it")
 
 col, rows = _sheet(RESET, "2_module_reset")
 expected_link_up = {}
@@ -132,7 +120,7 @@ for record in reset["temps"]:
 _check(actual_temps, expected_temps, "temperature", 5)
 
 
-# --- soak_sample.xlsx: T-Code and uncorrected codewords from get_fec_counter ------
+# --- soak_sample.xlsx: BER, T-Code and uncorrected codewords from get_fec_counter -
 
 soak_yml = os.path.join(work, "soak_sample.yml")
 data_to_yml(SOAK, soak_yml, test_type="soak", recovery_commanded=False)
@@ -140,12 +128,20 @@ soak = yaml.safe_load(open(soak_yml, encoding="utf-8"))
 
 col, rows = _sheet(SOAK, "5_get_fec_counter")
 
+expected_ber = {}
 expected_tcode = {}
 expected_ucw = {}
 for row in rows:
     key = (str(row[col["TreeL1"]]), row[col["TreeL2"]], row[col["TreeL3"]])
+    expected_ber[key] = [row[col["FEC_BER"]]]
     expected_tcode[key] = [row[col["tcode2"]]]
     expected_ucw[key] = [row[col["UNCORR_CW"]]]
+
+actual_ber = {}
+for record in soak["ber"]:
+    key = (record["switch"], record["port"], record["lane"])
+    actual_ber[key] = record["values"]
+_check(actual_ber, expected_ber, "BER (fec_counter)", 5)
 
 actual_tcode = {}
 for record in soak["tcode"]:
