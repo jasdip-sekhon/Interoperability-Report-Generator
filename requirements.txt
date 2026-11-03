@@ -1,5 +1,29 @@
+# Pinned, not floored - including what these five pull in underneath them, not just
+# the five themselves. matplotlib decides figure size, tight_layout and tick spacing
+# (kiwisolver drives its layout math), and this project's output is compared against a
+# hand-built deck chart by chart - a dependency drifting to a different version would
+# not fail anything, it would just stop matching.
+#
+# To bump one on purpose: change its line below, then `pip install -r requirements.txt`
+# into a clean venv and `pip freeze` to see what else moved - update those lines too,
+# don't just bump the one you meant to. Then re-render a rack and look at it.
+
 matplotlib==3.11.1
 openpyxl==3.1.5
 Pillow==12.3.0
 python-pptx==1.0.2
 PyYAML==6.0.3
+
+contourpy==1.3.3
+cycler==0.12.1
+et_xmlfile==2.0.0
+fonttools==4.63.0
+kiwisolver==1.5.0
+lxml==6.1.1
+numpy==2.4.6
+packaging==26.2
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+six==1.17.0
+typing_extensions==4.15.0
+XlsxWriter==3.2.9
