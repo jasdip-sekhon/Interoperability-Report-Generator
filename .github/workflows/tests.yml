@@ -17,9 +17,9 @@ jobs:
         python: ["3.11", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -35,7 +35,7 @@ jobs:
       # the output is the point of the project, so keep it where it can be looked at
       - name: Keep the deck
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deck-py${{ matrix.python }}
           path: output/**/*.pptx
