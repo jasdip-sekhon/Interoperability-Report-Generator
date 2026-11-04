@@ -31,6 +31,10 @@ SINGLE_CELL = ((0.35, 0.97, 1.30, 12.6, 4.90),)
 # two share the slide's full width, one above the other, on the grid's own two rows
 STACKED_CELLS = ((0.35, 0.97, 1.24, 12.6, 2.25), (0.35, 3.71, 3.98, 12.6, 2.25))
 PER_SLIDE = len(GRID_CELLS)
+WIDE_PER_SLIDE = len(STACKED_CELLS)
+# a cell fits a chart by whichever side runs out first, so this is the aspect at which
+# the grid stops having width to spare and starts letterboxing
+GRID_ASPECT = GRID_CELLS[0][3] / GRID_CELLS[0][4]
 
 RULE_COLOUR = RGBColor(0x7F, 0x7F, 0x7F)
 
@@ -68,34 +72,59 @@ def _add_rule(slide):
     shape.shadow.inherit = False
 
 
-def _fit(image_path, max_width, max_height):
-    """Scale an image to fit a cell without distorting it - chart aspect ratios differ
-    too much (a wide box plot, a near-square temperature chart) for a fixed size."""
-    with Image.open(image_path) as image:
-        width, height = image.size
-    scale = min(max_width / width, max_height / height)
-    return width * scale, height * scale
+def _measure(charts, charts_dir):
+    """Give every chart its path and the aspect of the PNG actually rendered there. The
+    runner sizes a figure by how many x-axis entries it carries, so one metric comes out
+    3.7:1 across a whole rack and 1.3:1 across one switch; the manifest does not say
+    which, and the layout cannot be chosen without knowing."""
+    for chart in charts:
+        chart["path"] = Path(charts_dir) / chart["file"]
+        with Image.open(chart["path"]) as image:
+            width, height = image.size
+        chart["aspect"] = width / height
+
+
+def _is_wide(chart):
+    """Too wide for a grid cell, which would then letterbox it: the cell runs out of
+    width with vertical room still unused, and only a full-width row recovers it."""
+    return chart["aspect"] > GRID_ASPECT
+
+
+def _fit(aspect, max_width, max_height):
+    """Scale a chart to fit a cell without distorting it - aspect ratios differ too
+    much (a wide box plot, a near-square temperature chart) for a fixed size."""
+    width = min(max_width, max_height * aspect)
+    return width, width / aspect
 
 
 def _caption_for(chart, slide_metric):
     """What this chart is that the slide heading has not said already - its metric on a
-    slide mixing several, otherwise just which part of one axis it covers."""
-    caption = chart["title"]
-    if slide_metric and caption.startswith(slide_metric):
-        caption = caption[len(slide_metric):].strip()
-    return caption
+    slide mixing several, otherwise which part of one axis it covers."""
+    if not slide_metric:
+        return chart.get("metric") or chart["title"]
+    if chart.get("of", 1) > 1:
+        return f"part {chart['part']} of {chart['of']}"
+    return ""
 
 
-def _place_chart(slide, chart, cell, charts_dir, slide_metric=None):
+def _shows_parts(charts):
+    """Whether the charts label themselves, in which case the slide counting its own
+    pages puts two different "N of M" on one slide and makes the reader sort them out."""
+    for chart in charts:
+        if chart.get("of", 1) > 1:
+            return True
+    return False
+
+
+def _place_chart(slide, chart, cell, slide_metric=None):
     x, caption_y, picture_y, cell_w, cell_h = cell
     caption = _caption_for(chart, slide_metric)
     if caption:
         _add_text(slide, (x, caption_y, cell_w, 0.24), caption, 10)
-    path = charts_dir / chart["file"]
-    width, height = _fit(path, cell_w, cell_h)
+    width, height = _fit(chart["aspect"], cell_w, cell_h)
     # centre it horizontally in the cell, so narrow charts are not left-stranded
     left = x + (cell_w - width) / 2
-    slide.shapes.add_picture(str(path), Inches(left), Inches(picture_y),
+    slide.shapes.add_picture(str(chart["path"]), Inches(left), Inches(picture_y),
                              Inches(width), Inches(height))
 
 
@@ -126,12 +155,12 @@ def cells_for(count):
     return GRID_CELLS
 
 
-def add_chart_slide(presentation, heading, charts, charts_dir, slide_metric=None):
+def add_chart_slide(presentation, heading, charts, slide_metric=None):
     slide = _blank_slide(presentation)
     _add_text(slide, HEADING, heading, 16, bold=True)
     _add_rule(slide)
     for chart, cell in zip(charts, cells_for(len(charts))):
-        _place_chart(slide, chart, cell, charts_dir, slide_metric)
+        _place_chart(slide, chart, cell, slide_metric)
     return slide
 
 
@@ -157,10 +186,30 @@ def group_by_metric(charts):
     return groups
 
 
-def paginate(items, size):
+def _capacity(page, chart):
+    """How many charts the slide holds once this one has joined it. One wide chart on a
+    page settles it for the whole page: the two full-width rows are the only cells left
+    that do not letterbox it, and a compact chart simply centres in one."""
+    if _is_wide(chart):
+        return WIDE_PER_SLIDE
+    for placed in page:
+        if _is_wide(placed):
+            return WIDE_PER_SLIDE
+    return PER_SLIDE
+
+
+def paginate(charts):
+    """Pages of charts that can share a slide. A page turns over when it is full, and
+    how full it can get depends on the shapes on it, not on a fixed count."""
     pages = []
-    for start in range(0, len(items), size):
-        pages.append(items[start:start + size])
+    page = []
+    for chart in charts:
+        if page and len(page) + 1 > _capacity(page, chart):
+            pages.append(page)
+            page = []
+        page.append(chart)
+    if page:
+        pages.append(page)
     return pages
 
 
@@ -177,13 +226,13 @@ def slide_plan(charts):
             runs.append((metric, of_metric))
 
     plan = []
-    pages = paginate(singles, PER_SLIDE)
+    pages = paginate(singles)
     number = 1
     for page in pages:
         plan.append((None, number, len(pages), page))
         number = number + 1
     for metric, of_metric in runs:
-        pages = paginate(of_metric, PER_SLIDE)
+        pages = paginate(of_metric)
         number = 1
         for page in pages:
             plan.append((metric, number, len(pages), page))
@@ -201,20 +250,23 @@ def _device_of(charts):
 
 
 def _heading_for(name, scope, device, metric, page_number, page_count):
-    # everything true of the whole slide is said here, once: the testcase (a slide
-    # scrolled to on its own must still name it), the switch, and what that switch is
-    heading = name
-    if scope == "all":
-        heading = f"{heading} — Across all switches"
-    else:
-        heading = f"{heading} — Switch {scope}"
-        if device:
-            heading = f"{heading} ({device})"
+    """Everything true of the whole slide, once, most-varying first. The metric leads
+    because it changes most between slides and is the only part at a fixed position;
+    everything before it would shift it by its own length."""
+    parts = []
     if metric:
-        heading = f"{heading} — {metric}"
+        parts.append(metric)
+    if scope == "all":
+        parts.append("Across all switches")
+    else:
+        parts.append(f"Switch {scope}")
+    parts.append(name)
+    if device and scope != "all":
+        # the model identifies the unit; its address is detail the heading need not carry
+        parts.append(device.partition(" — ")[0])
     if page_count > 1:
-        heading = f"{heading} (page {page_number} of {page_count})"
-    return heading
+        parts.append(f"page {page_number} of {page_count}")
+    return " · ".join(parts)
 
 
 def add_testcase(presentation, manifest, charts_dir):
@@ -226,13 +278,16 @@ def add_testcase(presentation, manifest, charts_dir):
     if not name:
         name = manifest["test_type"].title()
     add_section_slide(presentation, f"{name} Plots")
+    _measure(manifest["charts"], charts_dir)
     slides = 1
     for scope, charts in group_by_scope(manifest["charts"]):
         device = _device_of(charts)
         for metric, number, count, page in slide_plan(charts):
+            if _shows_parts(page):
+                number, count = 1, 1
             add_chart_slide(presentation,
                             _heading_for(name, scope, device, metric, number, count),
-                            page, charts_dir, metric)
+                            page, metric)
             slides = slides + 1
     return slides
 

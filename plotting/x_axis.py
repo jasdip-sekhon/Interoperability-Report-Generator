@@ -185,7 +185,7 @@ def report_uncharted_lanes(measurements, keys, names, seen):
                     _name_ports(signature))
 
 
-def report_link_up_coverage(records, keys):
+def report_link_up_coverage(records, keys, spec):
     """Only the side whose links were taken down reports link-up, so counting gaps
     against the whole rack always fires and would hide a real one. The topology
     filtered to that side is the honest denominator."""
@@ -220,10 +220,12 @@ def report_link_up_coverage(records, keys):
 
     if missing:
         warn_detail(f"link-up on {where}: {len(expected) - len(missing)} of "
-                    f"{len(expected)} topology lanes measured, {len(missing)} missing:",
+                    f"{len(expected)} topology lanes measured, {len(missing)} missing "
+                    f"(against the {spec}s spec):",
                     _name_ports(missing))
         return
-    say(f"link-up on {where}: all {len(expected)} topology lanes measured")
+    say(f"link-up on {where}: all {len(expected)} topology lanes measured, "
+        f"against the {spec}s spec")
 
 
 def _report_unmatched(keys, values, what):

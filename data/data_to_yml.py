@@ -26,6 +26,12 @@ def _detect_test_type(wb):
         return "soak"
     return "reset"
 
+def _is_soak(test_type):
+    """Named by whoever wrote the config, so "Traffic Soak" and "Soak 48h" are both a
+    soak - an exact match would quietly collect no BER for either."""
+    return "soak" in test_type
+
+
 def _collect_fec_metrics(wb, module_records, test_type):
     """BER (soak only) plus the two counter metrics every test_type gets; the summary
     line already says when BER is absent, so only its source is printed here."""
@@ -34,11 +40,11 @@ def _collect_fec_metrics(wb, module_records, test_type):
         fec_records = _read_sheet(fec_sheet)
         tcode = collect_tcode(fec_records)
         uncorrected_cw = collect_uncorrected_cw(fec_records)
-        if test_type != "soak":
+        if not _is_soak(test_type):
             return None, None, tcode, uncorrected_cw
         return collect_pre_fec_ber(fec_records), "fec_counter", tcode, uncorrected_cw
     if module_records is not None:
-        if test_type != "soak":
+        if not _is_soak(test_type):
             return None, None, None, None
         return collect_ber_from_vdm(module_records), "vdm", None, None
     return None, None, None, None

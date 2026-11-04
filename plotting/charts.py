@@ -107,9 +107,13 @@ def draw_ber(measurements, meta, keys, labels, out_dir):
     values = _lane_values(records, drop_at_or_above=SATURATED_BER)
     _report_unmatched(keys, values, "BER")
     # which instrument read it changes what the numbers mean, so it rides with the name
+    if meta["ber_source"] == "fec_counter":
+        source = "FEC counter"
+    else:
+        source = "module VDM"
     return _draw_per_switch(plots.box_plot, values, keys, labels, meta,
                             stem="pre_fec_ber_box",
-                            metric=f"Pre-FEC BER ({meta['ber_source']})",
+                            metric=f"Pre-FEC BER ({source})",
                             ylabel="Pre-FEC BER", out_dir=out_dir,
                             spec_max=SPEC_BER, log=True)
 
@@ -141,8 +145,10 @@ def draw_uncorrected_cw(measurements, meta, keys, labels, out_dir):
 
 
 def _link_up_spec(meta):
-    """How long a link may take to come back, which depends on what took it down."""
-    if meta["test_type"].startswith("reset"):
+    """How long a link may take to come back, which depends on what took it down. The
+    name is a person's, so "Reset DUT" and "DUT Reset" are both a reset - a prefix
+    match drew the shut line at 20s for either, and nothing said so."""
+    if "reset" in meta["test_type"]:
         return SPEC_LINK_UP_RESET_S
     return SPEC_LINK_UP_SHUT_S
 
@@ -152,7 +158,7 @@ def draw_link_up(measurements, meta, keys, labels, out_dir):
     if records is None:
         return []
     values = _lane_values(records)
-    report_link_up_coverage(records, keys)
+    report_link_up_coverage(records, keys, _link_up_spec(meta))
     return _draw_per_switch(plots.box_plot, values, keys, labels, meta,
                             stem="link_up_box", metric="Link-up time",
                             ylabel="Link-up time (s)", out_dir=out_dir,

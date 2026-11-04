@@ -15,35 +15,49 @@ from pptx import Presentation
 import _bootstrap
 from build_deck import (
     GRID_CELLS,
+    GRID_ASPECT,
     PER_SLIDE,
     SINGLE_CELL,
     STACKED_CELLS,
+    WIDE_PER_SLIDE,
     build_deck,
     cells_for,
     group_by_metric,
     group_by_scope,
     paginate,
+    _caption_for,
     _device_of,
     _fit,
     _heading_for,
+    _shows_parts,
 )
 
 PICTURE = 13  # MSO_SHAPE_TYPE.PICTURE
 
 
-def chart(name, scope, title=None, metric=None):
-    entry = {"file": name, "title": title or name, "scope": scope}
+def chart(name, scope, title=None, metric=None, aspect=1.33):
+    entry = {"file": name, "title": title or name, "scope": scope, "aspect": aspect}
     if metric is not None:
         entry["metric"] = metric
     return entry
 
 
-def write_manifest(folder, charts, test_type="soak", sizes=None):
+WIDE = 3.7      # a full rack on one axis, as the runner renders it
+COMPACT = 1.33  # a handful of entries, at the minimum figure size
+
+
+def write_manifest(folder, charts, test_type="soak"):
+    """Charts are written out at the shape their aspect claims, since the builder
+    measures the PNG rather than trusting the manifest."""
+    entries = []
     for entry in charts:
-        size = (sizes or {}).get(entry["file"], (400, 300))
+        size = (int(300 * entry["aspect"]), 300)
         Image.new("RGB", size, "white").save(os.path.join(folder, entry["file"]))
+        written = dict(entry)
+        del written["aspect"]
+        entries.append(written)
     manifest = {"capture": "x.yml", "test_type": test_type,
-                "ber_source": "fec_counter", "charts": charts}
+                "ber_source": "fec_counter", "charts": entries}
     path = os.path.join(folder, "manifest.yml")
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(manifest, f, sort_keys=False, allow_unicode=True)
@@ -71,20 +85,51 @@ print("ok  group_by_scope: order wins over tidiness")
 
 # --- pagination ------------------------------------------------------------------
 
-assert paginate([1, 2, 3, 4, 5], 4) == [[1, 2, 3, 4], [5]]
-assert paginate([], 4) == []
-assert paginate([1], 4) == [[1]]
+compact = [chart(f"c{i}.png", "all", aspect=COMPACT) for i in range(5)]
+assert [len(page) for page in paginate(compact)] == [4, 1]
+assert paginate([]) == []
+assert [len(page) for page in paginate(compact[:1])] == [1]
 print("ok  paginate: splits on the grid size, no empty trailing page")
 
-assert _heading_for("Soak", "all", None, None, 1, 1) == "Soak — Across all switches"
-assert _heading_for("Soak", "0", None, None, 1, 1) == "Soak — Switch 0"
-assert _heading_for("Soak", "0", "AZ9074 — 10.0.0.1", None, 1, 1) ==     "Soak — Switch 0 (AZ9074 — 10.0.0.1)"
-assert _heading_for("Soak", "0", None, "Pre-FEC BER", 1, 1) == "Soak — Switch 0 — Pre-FEC BER"
+# a wide chart is letterboxed by a grid cell, so it takes a full-width row and the
+# slide holds two instead of four
+wide = [chart(f"w{i}.png", "all", aspect=WIDE) for i in range(5)]
+assert [len(page) for page in paginate(wide)] == [2, 2, 1]
+assert WIDE > GRID_ASPECT > COMPACT, "the threshold must separate the two families"
+print(f"ok  paginate: wide charts get {WIDE_PER_SLIDE} full-width rows, not the grid")
+
+# the shapes decide together: one wide chart settles the page it lands on, and a page
+# of compact charts closes early rather than cramming a wide one into a quarter
+mixed = paginate([chart("a.png", "all", aspect=COMPACT),
+                  chart("b.png", "all", aspect=WIDE),
+                  chart("c.png", "all", aspect=COMPACT)])
+assert [len(page) for page in mixed] == [2, 1], mixed
+assert [c["file"] for c in mixed[0]] == ["a.png", "b.png"]
+print("ok  paginate: one wide chart sets the capacity of the page it joins")
+
+# the metric leads: it is the only element at a fixed position, since anything before
+# it shifts it by its own length from slide to slide
+assert _heading_for("Soak", "all", None, None, 1, 1) == "Across all switches · Soak"
+assert _heading_for("Soak", "0", None, None, 1, 1) == "Switch 0 · Soak"
+assert _heading_for("Soak", "0", None, "Pre-FEC BER", 1, 1) == "Pre-FEC BER · Switch 0 · Soak"
 assert (_heading_for("Soak", "0", None, "Pre-FEC BER", 2, 3)
-       == "Soak — Switch 0 — Pre-FEC BER (page 2 of 3)")
-# a device belongs to the switch, so "all switches" never claims one
-assert _heading_for("Soak", "all", "AZ9074 — 10.0.0.1", "T-Code", 1, 1) ==     "Soak — Across all switches — T-Code"
-print("ok  _heading_for: testcase, switch, device and metric, each said once")
+        == "Pre-FEC BER · Switch 0 · Soak · page 2 of 3")
+# the model identifies the unit; the address is detail the heading does not carry
+assert (_heading_for("Soak", "0", "AZ9074 — 10.0.0.1", "T-Code", 1, 1)
+        == "T-Code · Switch 0 · Soak · AZ9074")
+# a device belongs to a switch, so "all switches" never claims one
+assert (_heading_for("Soak", "all", "AZ9074 — 10.0.0.1", "T-Code", 1, 1)
+        == "T-Code · Across all switches · Soak")
+print("ok  _heading_for: metric first, then switch, testcase and model, each once")
+
+# two counters on one slide make the reader work out which is which, so the slide
+# defers whenever its charts already label themselves
+assert _shows_parts([{"file": "a.png", "of": 5}]) is True
+assert _shows_parts([{"file": "a.png"}, {"file": "b.png", "of": 1}]) is False
+assert _caption_for({"file": "a.png", "part": 2, "of": 5}, "T-Code") == "part 2 of 5"
+assert _caption_for({"file": "a.png", "of": 1}, "T-Code") == ""
+assert _caption_for({"file": "a.png", "metric": "T-Code"}, None) == "T-Code"
+print("ok  _caption_for: the metric when the heading omits it, the part when it does not")
 
 assert _device_of([{"file": "a.png"}, {"file": "b.png", "device": "AZ9074"}]) == "AZ9074"
 assert _device_of([{"file": "a.png"}]) is None
@@ -113,19 +158,22 @@ print("ok  cells_for: room per chart follows how many are sharing the slide")
 
 # --- pictures are fitted, never stretched ----------------------------------------
 
-work = tempfile.mkdtemp()
-wide = os.path.join(work, "wide.png")
-Image.new("RGB", (1200, 300), "white").save(wide)
-width, height = _fit(wide, 5.9, 2.25)
-assert abs(width / height - 4.0) < 0.01, "a 4:1 image must stay 4:1"
+width, height = _fit(4.0, 5.9, 2.25)
+assert abs(width / height - 4.0) < 0.01, "a 4:1 chart must stay 4:1"
 assert width <= 5.9 + 1e-6 and height <= 2.25 + 1e-6, "and must fit inside the cell"
 
-tall = os.path.join(work, "tall.png")
-Image.new("RGB", (300, 1200), "white").save(tall)
-width, height = _fit(tall, 5.9, 2.25)
-assert height <= 2.25 + 1e-6, "a tall image is limited by height, not width"
+width, height = _fit(0.25, 5.9, 2.25)
+assert height <= 2.25 + 1e-6, "a tall chart is limited by height, not width"
 assert abs(width / height - 0.25) < 0.01
 print("ok  _fit: aspect preserved, bounded by whichever side runs out first")
+
+# what the whole change is for: the full-width row gives a wide chart room the grid
+# cell cannot, and gives a compact one nothing it did not already have
+grid_w, grid_h = GRID_CELLS[0][3], GRID_CELLS[0][4]
+row_w, row_h = STACKED_CELLS[0][3], STACKED_CELLS[0][4]
+assert _fit(WIDE, row_w, row_h)[0] > _fit(WIDE, grid_w, grid_h)[0] * 1.3
+assert _fit(COMPACT, row_w, row_h) == _fit(COMPACT, grid_w, grid_h)
+print("ok  _fit: a full-width row only pays off for a chart the grid would letterbox")
 
 
 # --- one chart takes the slide, several share the grid ---------------------------
@@ -141,11 +189,23 @@ assert SINGLE_CELL[0][3] > GRID_CELLS[0][3]
 print("ok  layout: a single chart gets the full slide")
 
 work = tempfile.mkdtemp()
-path = write_manifest(work, [chart(f"c{i}.png", "all") for i in range(PER_SLIDE)])
+path = write_manifest(work, [chart(f"c{i}.png", "all", aspect=COMPACT)
+                             for i in range(PER_SLIDE)])
 build_deck(path, os.path.join(work, "grid.pptx"))
 deck = Presentation(os.path.join(work, "grid.pptx"))
 assert len(slide_pictures(deck.slides[2])) == PER_SLIDE
-print(f"ok  layout: {PER_SLIDE} charts share one slide")
+print(f"ok  layout: {PER_SLIDE} compact charts share one slide")
+
+# end to end, the aspect comes off the PNG - nothing in the manifest declares it
+work = tempfile.mkdtemp()
+path = write_manifest(work, [chart(f"w{i}.png", "all", aspect=WIDE)
+                             for i in range(PER_SLIDE)])
+build_deck(path, os.path.join(work, "wide.pptx"))
+deck = Presentation(os.path.join(work, "wide.pptx"))
+assert [len(slide_pictures(s)) for s in deck.slides] == [0, 0, 2, 2]
+placed = slide_pictures(deck.slides[2])[0]
+assert placed.width > GRID_CELLS[0][3] * 914400,     "a wide chart must end up wider than the grid cell it would have sat in"
+print(f"ok  layout: wide charts measured from the PNG, {WIDE_PER_SLIDE} to a slide")
 
 
 # --- the builder must not need to recognise anything -----------------------------
@@ -164,7 +224,7 @@ for slide in deck.slides:
             headings.append(shape.text_frame.text.strip())
             break
 assert "Shut_Unshut Plots" in headings, headings
-assert "Shut_Unshut — Switch 99-7" in headings, \
+assert "Switch 99-7 · Shut_Unshut" in headings, \
     "an unrecognised switch id still gets its own slide, named with its testcase"
 total = sum(len(slide_pictures(s)) for s in deck.slides)
 assert total == 3, "every chart in the manifest is placed, known or not"

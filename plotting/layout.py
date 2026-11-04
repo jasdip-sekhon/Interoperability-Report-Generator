@@ -49,14 +49,15 @@ def _draw_per_switch(draw, values, keys, labels, meta, stem, metric, ylabel,
             chart_title = metric
             name = f"{stem}_sw{switch}.png"
             if len(chunks) > 1:
-                # a part is a slice of this switch's own axis; the deck's "page" counts
-                # slides, so the two numbers that can appear together are named apart
+                # a part is a slice of this switch's own axis, carried as a field so the
+                # deck can count slides or defer to this, but never show both
                 chart_title = f"{metric} (part {number} of {len(chunks)})"
                 name = f"{stem}_sw{switch}_p{number}.png"
             draw(values, chunk_keys, chunk_labels, title="", ylabel=ylabel,
                  out_path=output_path(name, out_dir), spec_max=spec_max, log=log)
             drawn.append({"file": name, "title": chart_title, "scope": switch,
-                          "metric": metric, "device": device})
+                          "metric": metric, "device": device,
+                          "part": number, "of": len(chunks)})
             number = number + 1
     return drawn
 

@@ -27,8 +27,21 @@ INTERCONNECTS_NAME = "interconnects.yml"
 OWNER_STAMP_NAME = ".source"
 
 
+# a name reaches the filesystem through _slug, and windows refuses these outright
+ILLEGAL_IN_NAME = '<>:"/\|?*'
+
+
 def _slug(name):
-    return name.strip().lower().replace(" ", "_").replace("/", "_")
+    """A testcase or report name as a folder name. Characters windows rejects become
+    underscores, since the alternative is the run dying on mkdir partway through."""
+    slug = name.strip().lower().replace(" ", "_")
+    cleaned = []
+    for char in slug:
+        if char in ILLEGAL_IN_NAME:
+            cleaned.append("_")
+        else:
+            cleaned.append(char)
+    return "".join(cleaned)
 
 
 def _resolve(path):
@@ -77,6 +90,9 @@ def prepare_measurements(testcase, use_cache=True):
     # the configured name, not a guess from the sheets: detection calls every
     # non-reset capture a soak, losing the recovery signal
     test_type = _slug(testcase["name"])
+    if "soak" in test_type and "reset" in test_type:
+        warn(f"testcase '{testcase['name']}' reads as both a soak and a reset; BER "
+             f"will be collected and link-up held to the reset spec")
 
     converted = []
     paths = []
