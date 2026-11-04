@@ -201,15 +201,18 @@ class Plots:
         return alphas
 
     def _label_counts(self, axes, position, values):
-        # a count only earns a label once there is more than one dot to count
+        """Centred above the cluster, not beside it: dozens of categories leave each
+        one under an inch of horizontal room, too little for a multi-digit label next
+        to the next category's own dots, but there is usually plenty of vertical room
+        between the handful of distinct values a chart like this actually has."""
         counts = {}
         for value in values:
             counts[value] = counts.get(value, 0) + 1
-        width = self.style["DOT_JITTER_WIDTH"]
         for value in counts:
             if counts[value] > 1:
-                axes.text(position + width + 0.05, value, f"×{counts[value]}",
-                          fontsize=self.style["DOT_LABEL_FONTSIZE"], va="center")
+                axes.annotate(f"×{counts[value]}", xy=(position, value),
+                              xytext=(0, 6), textcoords="offset points",
+                              ha="center", fontsize=self.style["DOT_LABEL_FONTSIZE"])
 
     def dot_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):
         if not keys:
