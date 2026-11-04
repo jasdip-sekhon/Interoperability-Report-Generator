@@ -14,6 +14,11 @@ FREE_LABEL_CHARS: 20                    # chars before height grows
 VERTICAL_LABEL_X_AXIS_ENTRIES: 20       # above this, labels rotate 90° not 45°
 MAX_X_AXIS_ENTRIES_PER_CHART: 64        # entries on one chart before it splits
 
+# dot_plot: identical readings stack into one dot otherwise, hiding how many there are
+DOT_JITTER_WIDTH: 0.3          # spread within a category's slot (1.0 wide) without crossing it
+DOT_ALPHA_FLOOR: 0.15          # a big cluster still reads as one patch, not blank
+DOT_LABEL_FONTSIZE: 7
+
 VALUE_CMAP: "turbo"
 DEFAULT_COLOR: "#4472C4"
 UNHIGHLIGHTED_COLOR: "#ED7D31"

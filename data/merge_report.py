@@ -1,13 +1,11 @@
-"""What the merge did.
-
-Entries one run held and another did not are the reason the merge exists.
-"""
+"""What the merge did - entries one run held and another did not are the reason it
+exists."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import say                                        # noqa: E402
+from console import line, say                                  # noqa: E402
 
 from merge_rules import _index
 
@@ -83,15 +81,14 @@ def _report_never_recovered(runs, merged):
 def _report_informational(labels, out_path, conflicts):
     """One line, because nothing reads the merged yaml: the charts come from each run
     on its own, and a reconciliation of DUT against Ref is not a result."""
-    line = (f"Merged {' + '.join(labels)} -> {Path(out_path).name} (informational "
-            f"union; each run is charted on its own)")
+    line(f"Merged {' + '.join(labels)} -> {Path(out_path).name} (informational union; "
+         f"each run is charted on its own)")
     if conflicts:
         if conflicts == 1:
             lane_word = "lane differs"
         else:
             lane_word = "lanes differ"
-        line = line + f"; {conflicts} {lane_word} in flap count between the runs"
-    say(line)
+        say(f"{conflicts} {lane_word} in flap count between the runs")
 
 
 def _report(runs, labels, merged, offsets, conflicts, out_path, quiet):

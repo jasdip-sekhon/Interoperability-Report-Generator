@@ -1,9 +1,5 @@
-"""Several runs of one testcase into one measurement yaml.
-
-    merge_runs -> {merge_rules, merge_report} -> merge_rules
-
-Each capture is still charted on its own; this union is what an analysis stage needs.
-"""
+"""Several runs of one testcase into one measurement yaml, for the analysis stage that
+wants the union - each capture is still charted on its own."""
 
 from datetime import datetime
 from pathlib import Path
@@ -63,11 +59,9 @@ def _start_offsets(runs):
 
 
 def merge_runs(paths, out_path, labels=None, quiet=False):
-    """labels names each run in the printed summary; the filename if none is given.
-
-    quiet reduces the summary to one line: nothing reads the merged yaml, so for a
-    DUT/Ref pair its reconciliation is not a result, and reads as one when skimmed.
-    """
+    """labels names each run in the summary (the filename if none given); quiet reduces
+    it to one line, since nothing reads the merged yaml and a DUT/Ref reconciliation
+    is not a result."""
     if labels is None:
         labels = []
         for path in paths:

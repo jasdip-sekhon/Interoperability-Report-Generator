@@ -1,7 +1,5 @@
-"""One chart per switch, split again past MAX_X_AXIS_ENTRIES_PER_CHART.
-
-A rack has hundreds of interconnects, so a single axis is unreadable.
-"""
+"""One chart per switch, split again past MAX_X_AXIS_ENTRIES_PER_CHART - a rack has
+hundreds of interconnects, so a single axis is unreadable."""
 
 from plotting import Plots
 from output import output_path
@@ -40,12 +38,8 @@ def _chunks(keys, labels):
 
 def _draw_per_switch(draw, values, keys, labels, meta, stem, metric, title, ylabel,
                      out_dir, spec_max=None, log=False):
-    """One chart per switch, split again when a switch has more lanes than fit on an axis.
-
-    A split chart is numbered "(2 of 4)" with no noun. The deck heading above it already
-    says "page N of M" about slides, and two different counts calling themselves pages on
-    one slide is how you make a reader distrust both.
-    """
+    """One chart per switch, split again past the axis limit - numbered "(2 of 4)" with
+    no noun, since the deck heading above it already says "page N of M" about slides."""
     drawn = []
     for switch, switch_keys, switch_labels in _split_by_switch(keys, labels):
         chunks = _chunks(switch_keys, switch_labels)
@@ -66,10 +60,8 @@ def _draw_per_switch(draw, values, keys, labels, meta, stem, metric, title, ylab
 
 
 def _switch_info(meta, switch):
-    """(limits, device) for one switch, the device being its model and address.
-
-    Both missing is normal for a device the capture did not describe.
-    """
+    """(limits, device) for one switch, the device being its model and address - both
+    missing is normal for a device the capture did not describe."""
     info = meta["switches"].get(switch)
     if info is None:
         info = {}

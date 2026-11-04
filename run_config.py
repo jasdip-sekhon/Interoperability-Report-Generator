@@ -1,9 +1,7 @@
-"""What one report covers, from a config file or from the data itself.
-
-A .yml is read as written. Anything else - one capture, or a folder of them - becomes a
-config naming each capture as its own testcase. Nothing is paired: the real captures
-spell one testcase 'lane1-1' and 'ln1-1', and a wrong pairing is silent.
-"""
+"""What one report covers, from a config file or from the data itself: a .yml is read
+as written, and anything else becomes a config naming each capture as its own
+testcase, unpaired, since a wrong pairing (real captures spell one testcase 'lane1-1'
+and 'ln1-1') is silent."""
 
 from pathlib import Path
 

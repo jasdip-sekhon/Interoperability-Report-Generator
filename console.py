@@ -1,10 +1,5 @@
-"""How one line reaches the terminal.
-
-A report prints a few hundred lines and a warning has to survive being skimmed, so
-the kind of line is a gutter character rather than a word buried in the sentence, and
-nothing is left to the terminal's own wrapping - a 265-character warning soft-wrapped
-to the margin loses the indent that tells you which capture it belongs to.
-"""
+"""How one line reaches the terminal: a gutter character marks its kind, and nothing
+is left to the terminal's own wrapping, which would otherwise lose the indent."""
 
 from pathlib import Path
 import os
@@ -36,8 +31,8 @@ def _enable_windows_vt():
 
 
 def _colour_wanted():
-    """Colour is emphasis only. It is dropped whenever the log is going anywhere it
-    cannot survive - a file, a pipe, CI - because every line still reads without it."""
+    """Emphasis only, dropped wherever it cannot survive (a file, a pipe, CI) since
+    every line still reads without it."""
     if os.environ.get("NO_COLOR"):
         return False
     if not sys.stdout.isatty():
@@ -71,12 +66,14 @@ def warn(message):
     _emit("  ! ", message, YELLOW)
 
 
-def info(message):
-    _emit("  - ", message)
-
-
 def say(message):
     _emit("    ", message)
+
+
+def margin(message):
+    """At the left margin, unwrapped: a fact about the whole report, not about any
+    one testcase under it."""
+    print(message)
 
 
 def header(name):
@@ -85,21 +82,21 @@ def header(name):
 
 
 def warn_detail(message, detail):
-    """The sentence wraps, the detail does not: 'switch 4-33 port 32' broken across a
-    wrap is neither readable nor greppable, and the list is capped short anyway."""
+    """The sentence wraps, the identifier list does not - breaking it mid-entry would
+    make it neither readable nor greppable."""
     _emit("  ! ", message, YELLOW)
     print(_paint(f"      {detail}", YELLOW))
 
 
 def line(message):
-    """Printed whole, never wrapped: a path or a row of fields is read and copied as
-    one thing, and breaking it mid-field makes the log harder to grep."""
+    """Printed whole, never wrapped: a path or field row is read and copied as one
+    thing."""
     print(f"    {message}")
 
 
 def short_path(path):
-    """A path inside the project is named relative to it; one outside keeps its full
-    name, because which workbook a report charted against is the thing worth knowing."""
+    """Relative, inside the project; full, outside it - knowing which workbook a
+    report used matters more than a short path."""
     path = Path(path)
     try:
         return str(path.relative_to(PROJECT_ROOT))

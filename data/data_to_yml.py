@@ -8,7 +8,8 @@ from openpyxl import load_workbook
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import info, line                                 # noqa: E402
+from console import line                                       # noqa: E402
+from metric_names import METRIC_NAMES                          # noqa: E402
 
 from cache import _source_stamp, is_current
 from collect import (collect_ber_from_vdm, collect_link_flaps, collect_link_up,
@@ -35,12 +36,10 @@ def _collect_fec_metrics(wb, module_records, test_type):
         uncorrected_cw = collect_uncorrected_cw(fec_records)
         if test_type != "soak":
             return None, None, tcode, uncorrected_cw
-        info("BER from the switch's FEC counter")
         return collect_pre_fec_ber(fec_records), "fec_counter", tcode, uncorrected_cw
     if module_records is not None:
         if test_type != "soak":
             return None, None, None, None
-        info("BER from the module's own VDM reading (no FEC counter sheet)")
         return collect_ber_from_vdm(module_records), "vdm", None, None
     return None, None, None, None
 
@@ -55,10 +54,11 @@ def _section_counts(measurements, sections):
     counts = []
     for section in sections:
         value = measurements[section]
+        name = METRIC_NAMES[section]
         if value is None:
-            counts.append(f"{section} --")
+            counts.append(f"{name} --")
         else:
-            counts.append(f"{section} {len(value)}")
+            counts.append(f"{name} {len(value)}")
     return ", ".join(counts)
 
 
@@ -75,7 +75,7 @@ def _report_sections(test_type, measurements):
 def report_cached_capture(data, yml_file):
     """The same two lines a conversion prints, so a reused capture is still named and
     counted in the log rather than hidden behind a "reused" tally."""
-    print(f"{Path(data).name} (reused)")
+    line(Path(data).name + " (reused)")
     with open(yml_file, encoding="utf-8") as f:
         measurements = yaml.safe_load(f)
     _report_sections(measurements["meta"]["test_type"], measurements)
@@ -150,7 +150,7 @@ def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
     # read_only streams the sheets instead of building the whole workbook in memory;
     # on a real 361MB soak that is the difference between seconds and half an hour
     wb = load_workbook(data, read_only=True)
-    print(f"{Path(data).name}")
+    line(Path(data).name)
 
     # the caller usually knows which testcase this is; detection is the fallback
     if test_type is None:

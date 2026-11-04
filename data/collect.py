@@ -1,13 +1,11 @@
-"""One collector per measurement section.
-
-None always means not measured. Deciding a sheet is missing is the caller's job.
-"""
+"""One collector per measurement section. None always means not measured; deciding a
+sheet is missing is the caller's job."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import info                                       # noqa: E402
+from console import warn                                       # noqa: E402
 
 from parse import (_elapsed_hours, _group_by_lane, _lanes_to_records, _norm_switch,
                    _parse_temp)
@@ -16,14 +14,9 @@ VDM_PREFEC_PREFIX = "VDM_Pre-FEC_BER_Average_Media_Input_Lane_"
 SENSOR_COLUMN = "mb_asc5_temp1_Q88_frontrighttop_C"
 
 def collect_link_flaps(flap_records, recovery_commanded=False):
-    """Per-lane flap counts, and whether a lane never came back.
-
-    never_recovered only means something for a lane that was actually commanded down. A
-    reset or a shut/no-shut knocks the whole fabric over, so every lane qualifies. A soak
-    knocks nothing over, and a lane test knocks over exactly one - in both of those a
-    lane reading raw 0 was simply never asked to recover, so reporting it as a failure
-    would flag hundreds of healthy lanes. Hence null unless the caller says otherwise.
-    """
+    """Per-lane flap counts, and whether a lane never came back - null unless the caller
+    says recovery was commanded, since a lane never asked to recover reads as never
+    having recovered, and a soak or lane test would flag hundreds of healthy lanes."""
     lanes = _group_by_lane(flap_records, "Down->Up")
 
     flap_data = []
@@ -120,11 +113,11 @@ def collect_temps(module_records, timestamps):
 
     if unmatched:
         if unmatched == 1:
-            reading_word = "reading"
+            reading_word = "reading was"
         else:
-            reading_word = "readings"
-        info(f"{unmatched} module temperature {reading_word} had no matching log "
-             f"timestamp and were dropped")
+            reading_word = "readings were"
+        warn(f"{unmatched} module temperature {reading_word} dropped, having no "
+             f"matching log timestamp")
 
     temp_data = []
     for module_key in modules:
@@ -163,11 +156,11 @@ def collect_sensors(sensor_records, timestamps):
 
     if unmatched:
         if unmatched == 1:
-            reading_word = "reading"
+            reading_word = "reading was"
         else:
-            reading_word = "readings"
-        info(f"{unmatched} sensor {reading_word} had no matching log timestamp and "
-             f"were dropped")
+            reading_word = "readings were"
+        warn(f"{unmatched} sensor {reading_word} dropped, having no matching log "
+             f"timestamp")
 
     sensor_data = []
     for switch in switches:

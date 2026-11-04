@@ -1,7 +1,5 @@
-"""Spreadsheet cells and rows into values the collectors can use.
-
-Switch names, timestamps and temperatures arrive however the switch wrote them.
-"""
+"""Spreadsheet cells and rows into values the collectors can use, however the switch
+wrote its names, timestamps and temperatures."""
 
 from datetime import datetime
 

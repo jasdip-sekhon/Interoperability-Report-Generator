@@ -1,7 +1,5 @@
-"""A capture workbook into header-keyed records.
-
-The active sheet is whichever was open when the file was saved, so sheets go by name.
-"""
+"""A capture workbook into header-keyed records - sheets go by name since the active
+one is whichever was open when the file was saved."""
 
 import sys
 from pathlib import Path

@@ -1,24 +1,18 @@
-"""Render every chart for one capture, from the yaml the converters produce.
-
-This decides which charts a capture gets and writes the result. Imports run one way,
-so a change never has to be chased backwards:
-
-    plotting_runner -> charts -> {output, x_axis} -> plotting
-
-plotting.py is the generic chart library and imports none of the others.
-"""
+"""Render every chart for one capture, from the yaml the converters produce. Imports
+run one way, plotting_runner -> charts -> {output, x_axis} -> plotting, and plotting.py
+is the generic chart library that imports none of the others."""
 
 from pathlib import Path
 import sys
 import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import info, line, say, short_path, warn         # noqa: E402
+from console import line, say, warn                           # noqa: E402
 
-from charts import (METRIC_NAMES, draw_ber, draw_flaps_by_interconnect,
-                    draw_flaps_by_switch, draw_link_up, draw_tcode,
-                    draw_temperature_over_time, draw_temperature_per_port,
-                    draw_uncorrected_cw)
+from charts import (draw_ber, draw_flaps_by_interconnect, draw_flaps_by_switch,
+                    draw_link_up, draw_tcode, draw_temperature_over_time,
+                    draw_temperature_per_port, draw_uncorrected_cw)
+from metric_names import METRIC_NAMES
 from output import clear_output_dir, _sort_by_scope, _write_manifest
 from x_axis import (build_interconnect_axis, build_measured_axis,
                     build_measured_switches, build_port_vendors, build_switch_axis,
@@ -46,7 +40,9 @@ def load_axis(interconnects_yml):
     if not Path(interconnects_yml).exists():
         return None
     return {"interconnects": load_yaml(interconnects_yml),
-            "source": short_path(topology_source(interconnects_yml))}
+            # the name tells a real rack's workbook from the sample; the full path is
+            # stamped in interconnects.yml for when that is not enough
+            "source": Path(topology_source(interconnects_yml)).name}
 
 
 def _wanted(metrics, name):
@@ -88,20 +84,27 @@ def _report_unknown_metrics(metrics):
 
 
 def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YML,
-                   testcase=None, metrics=None, axis=None):
+                   testcase=None, metrics=None, axis=None, topology_gaps=None):
     measurements = load_yaml(measurements_yml)
     meta = measurements["meta"]
-    if meta["ber_source"] is None:
-        ber_note = "BER not collected"
-    elif meta["ber_source"] == "fec_counter":
-        ber_note = "BER from the switch's FEC counter"
+    # BER absent is already "BER --" on the capture summary just above; only its
+    # source, when it was collected, is new information worth repeating here
+    if meta["ber_source"] == "fec_counter":
+        notes = ["BER from the switch's FEC counter"]
+    elif meta["ber_source"] == "vdm":
+        notes = ["BER from the module's own VDM reading"]
     else:
-        ber_note = "BER from the module's own VDM reading"
+        notes = []
     if testcase is None:
+        # a bare filename does not say which testcase this is; a given name already does
         heading = Path(measurements_yml).name
+        notes = [meta["test_type"]] + notes
     else:
         heading = testcase
-    print(f"{heading} ({meta['test_type']}, {ber_note})")
+    if notes:
+        print(f"{heading} ({', '.join(notes)})")
+    else:
+        print(heading)
     replaced = clear_output_dir(out_dir)
 
     # a caller that passed the axis in has already named it; only a standalone run
@@ -118,9 +121,12 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         keys, labels = build_interconnect_axis(interconnects)
         switch_keys, switch_labels = build_switch_axis(interconnects)
         vendors = build_port_vendors(interconnects)
-        report_uncharted_lanes(measurements, keys, METRIC_NAMES)
+        if topology_gaps is None:
+            # a standalone run has nothing to share a set with; one of its own is fine
+            topology_gaps = set()
+        report_uncharted_lanes(measurements, keys, METRIC_NAMES, topology_gaps)
     else:
-        info("no topology file; ordering interconnects from the measurements "
+        warn("no topology file; ordering interconnects from the measurements "
              "themselves, so entries are named rather than described")
         keys, labels = build_measured_axis(measurements)
         switch_keys, switch_labels = build_measured_switches(measurements)
@@ -133,8 +139,8 @@ def generate_plots(measurements_yml, out_dir, interconnects_yml=INTERCONNECTS_YM
         at = []
         for seam in seams:
             at.append(f"{seam:.1f}h")
-        info(f"merged capture; lines break at {len(seams)} run boundary "
-             f"({', '.join(at)}) where nothing was measured")
+        say(f"merged capture; lines break at {len(seams)} run boundary "
+            f"({', '.join(at)}) where nothing was measured")
 
     if metrics is not None:
         _report_unknown_metrics(metrics)

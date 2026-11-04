@@ -1,11 +1,6 @@
-"""Build one report: captures in, slide deck out.
-
-    python main.py run_myrack.yml
-    python main.py path/to/captures -t topology.xlsx
-
-The work is in pipeline.py; nothing here can be reached by a test, so nothing here
-does anything but read the command line.
-"""
+"""Build one report: captures in, slide deck out. The work is in pipeline.py; nothing
+here can be reached by a test, so nothing here does anything but read the command
+line (python main.py run_myrack.yml, or a folder of captures with -t topology.xlsx)."""
 
 from pathlib import Path
 import argparse

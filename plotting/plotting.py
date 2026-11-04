@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import yaml
 
 import matplotlib
@@ -164,6 +165,52 @@ class Plots:
             patch.set_facecolor(color)
         return self._finish(figure, out_path)
 
+    def _stable_seed(self, key):
+        # a small polynomial hash, not python's own hash() - that one is salted per
+        # process, so the same key would get a different seed on every run
+        seed = 0
+        for char in repr(key):
+            seed = (seed * 131 + ord(char)) % 2147483647
+        return seed
+
+    def _jitter(self, key, count):
+        """Deterministic offsets around a category's centre, seeded by the key itself
+        rather than its position - so a key keeps its pattern even if other keys are
+        added or dropped."""
+        width = self.style["DOT_JITTER_WIDTH"]
+        seed = self._stable_seed(key)
+        offsets = []
+        for _ in range(count):
+            # a plain linear congruential generator - no import earns its way into a
+            # library meant to be liftable unchanged into another project
+            seed = (seed * 1103515245 + 12345) % 2147483648
+            fraction = seed / 2147483648
+            offsets.append((fraction * 2 - 1) * width)
+        return offsets
+
+    def _density_alpha(self, values):
+        """One reading stays fully opaque; a value shared by many fades toward the
+        floor, so a rare reading is never the faint one next to a common cluster."""
+        floor = self.style["DOT_ALPHA_FLOOR"]
+        counts = {}
+        for value in values:
+            counts[value] = counts.get(value, 0) + 1
+        alphas = []
+        for value in values:
+            alphas.append(max(floor, min(1.0, 1.0 / counts[value])))
+        return alphas
+
+    def _label_counts(self, axes, position, values):
+        # a count only earns a label once there is more than one dot to count
+        counts = {}
+        for value in values:
+            counts[value] = counts.get(value, 0) + 1
+        width = self.style["DOT_JITTER_WIDTH"]
+        for value in counts:
+            if counts[value] > 1:
+                axes.text(position + width + 0.05, value, f"×{counts[value]}",
+                          fontsize=self.style["DOT_LABEL_FONTSIZE"], va="center")
+
     def dot_plot(self, data, keys, labels, title, ylabel, out_path, spec_min=None, spec_max=None, xlabel=None, colors=None, log=False):
         if not keys:
             return False
@@ -174,13 +221,18 @@ class Plots:
             self._set_log_scale(axes, samples)
         x = []
         y = []
-        position = 1
-        for sample in samples:
-            for value in sample:
-                x.append(position)
-                y.append(value)
-            position = position + 1
-        axes.scatter(x, y, color=colors)
+        alpha = []
+        for i in range(len(keys)):
+            sample = samples[i]
+            position = i + 1
+            offsets = self._jitter(keys[i], len(sample))
+            for j in range(len(sample)):
+                x.append(position + offsets[j])
+                y.append(sample[j])
+            for value in self._density_alpha(sample):
+                alpha.append(value)
+            self._label_counts(axes, position, sample)
+        axes.scatter(x, y, color=colors, alpha=alpha if alpha else None)
 
         self._set_category_ticks(axes, labels)
         self._decorate(axes, title, ylabel, xlabel, spec_min, spec_max)

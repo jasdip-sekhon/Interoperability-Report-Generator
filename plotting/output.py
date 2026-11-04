@@ -1,7 +1,5 @@
-"""Where one capture's charts go, and the manifest that declares them.
-
-The manifest is the whole contract with deck/, which never learns what a metric is.
-"""
+"""Where one capture's charts go, and the manifest that declares them - the whole
+contract with deck/, which never learns what a metric is."""
 
 import sys
 from pathlib import Path
@@ -36,10 +34,8 @@ def output_path(filename, out_dir):
 
 
 def _sort_by_scope(charts):
-    """Reorder so each switch's charts arrive together, the 'all' ones first.
-
-    Charts keep the order the draw_* functions produced them in, within each switch.
-    """
+    """Reorder so each switch's charts arrive together, 'all' first, keeping the order
+    the draw_* functions produced them in within each switch."""
     ordered = []
     for chart in charts:
         if chart["scope"] == "all":

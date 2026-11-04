@@ -1,14 +1,11 @@
-"""Sequence the four stages: captures in, slide deck out.
-
-Each stage is already a script that runs on its own; this only orders them and decides
-where the files go. One report writes one folder under output/, so two racks cannot
-overwrite each other's charts.
-"""
+"""Sequence the four stages: captures in, slide deck out. Each stage already runs on
+its own; this only orders them and decides where the files go, one folder per report
+under output/ so two racks cannot overwrite each other's charts."""
 
 from pathlib import Path
 import sys
 
-from console import header, line, short_path, warn
+from console import header, margin, short_path, warn
 
 PROJECT_ROOT = Path(__file__).parent
 # the stages are sibling scripts rather than a package, so they import each other by
@@ -42,12 +39,9 @@ def _resolve(path):
 
 
 def _capture_entries(testcase):
-    """[(label, path)] for this testcase.
-
-    The common shapes write flat - `capture:` for one file, `dut:`/`ref:` for a
-    pair - so a config never needs the list-of-dicts form unless a testcase has more
-    than two runs or labels other than DUT/Ref. `captures:` still does that, in full.
-    """
+    """[(label, path)] for this testcase - `capture:` and `dut:`/`ref:` cover every
+    config but one with more than two runs or labels other than DUT/Ref, which is what
+    `captures:` is for, in full."""
     flat = {key for key in ("capture", "dut", "ref") if key in testcase}
     if flat and "captures" in testcase:
         raise ValueError(f"testcase '{testcase['name']}' has both {sorted(flat)} and "
@@ -73,12 +67,9 @@ def _capture_entries(testcase):
 
 
 def prepare_measurements(testcase, use_cache=True):
-    """Convert each capture. Returns [(label, measurement yaml)].
-
-    Each run is charted on its own: a DUT run and a Ref run reset different hardware, so
-    merging would seam every time series. The merged yaml is written anyway, for the
-    analysis that wants the union.
-    """
+    """Convert each capture; returns [(label, measurement yaml)]. Each run is charted
+    on its own, since a DUT run and a Ref run reset different hardware and merging
+    would seam every time series - the merged yaml is written anyway, for the union."""
     recovery_commanded = testcase.get("recovery_commanded")
     if recovery_commanded is None:
         recovery_commanded = False
@@ -113,11 +104,8 @@ def prepare_measurements(testcase, use_cache=True):
 
 
 def build_x_axis(topology, report_dir):
-    """The topology yaml this report charts against, or None to label from the data.
-
-    Nothing is printed here either way: each testcase already states which it got,
-    right where the x axis is actually used.
-    """
+    """The topology yaml this report charts against, or None to label from the data;
+    nothing is printed here, since the caller announces it once for the whole report."""
     if topology is None:
         return None
     interconnects_yml = report_dir / INTERCONNECTS_NAME
@@ -156,8 +144,11 @@ def run(target, topology=None, use_cache=True):
     # able to change the axis partway through a report
     axis = load_axis(build_x_axis(topology, report_dir))
     if axis is not None:
-        line(f"Interconnect order from {axis['source']}, "
-             f"{len(axis['interconnects'])} interconnects")
+        margin(f"Interconnect order from {axis['source']}, "
+               f"{len(axis['interconnects'])} interconnects")
+    # a lane the topology omits is a fact about the topology, true for every testcase
+    # that touches it - shared so the first testcase to find it is the only one to say so
+    topology_gaps = set()
 
     manifests = []
     for testcase in config["testcases"]:
@@ -167,8 +158,8 @@ def run(target, topology=None, use_cache=True):
             if label:
                 name = f"{name} {label}"
             manifests.append(generate_plots(measurements, report_dir / _slug(name),
-                                            None, name,
-                                            testcase.get("metrics"), axis))
+                                            None, name, testcase.get("metrics"),
+                                            axis, topology_gaps))
 
     header("Deck")
     deck_path = report_dir / f"{_slug(report)}.pptx"

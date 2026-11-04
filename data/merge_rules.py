@@ -1,8 +1,5 @@
-"""How each section of two runs is reconciled.
-
-Flags intersect, readings concatenate, flap counts take the highest. A wrong rule here
-produces output that looks entirely plausible.
-"""
+"""How each section of two runs is reconciled: flags intersect, readings concatenate,
+flap counts take the highest."""
 
 import sys
 from pathlib import Path

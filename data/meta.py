@@ -1,7 +1,5 @@
-"""What describes a capture rather than what it measured.
-
-The temperature spec belongs to the switch: a rack can mix optics rated 70C and 75C.
-"""
+"""What describes a capture rather than what it measured - the temperature spec
+belongs to the switch, since a rack can mix optics rated 70C and 75C."""
 
 import sys
 from pathlib import Path
@@ -35,11 +33,8 @@ def _first_start_time(log_records):
 
 
 def _one_rating(values, switch, field):
-    """The rating a switch's temperature line is drawn at.
-
-    Modules on one switch disagreeing is narrower than a mixed rack, but it still means
-    one line cannot represent them all.
-    """
+    """The rating a switch's temperature line is drawn at - modules on one switch can
+    still disagree, and one line cannot represent them all."""
     if len(values) > 1:
         rated = []
         for value in sorted(values):
@@ -57,12 +52,8 @@ def _remember(values, value):
 
 
 def _switch_temp_limits(module_records):
-    """{switch: {temp_min, temp_max}}.
-
-    The spec rides on every module row, and a rack can mix optics with different
-    ratings (70C and 75C are both common). Each temperature chart covers one switch and
-    draws one limit line, so the spec belongs to the switch, not the capture.
-    """
+    """{switch: {temp_min, temp_max}} - one limit line per chart, so the spec belongs
+    to the switch (a rack can mix 70C and 75C optics), not the capture."""
     seen = {}
     for record in module_records:
         switch = _norm_switch(record["TreeL1"])

@@ -1,7 +1,5 @@
-"""Whether a capture has already been converted by this code.
-
-The stamp covers every module that converts, so a parser fix invalidates every yaml.
-"""
+"""Whether a capture has already been converted by this code - the stamp covers every
+module that converts, so a parser fix invalidates every yaml."""
 
 from pathlib import Path
 import hashlib
@@ -23,11 +21,8 @@ def _file_hash(path):
 
 
 def _converter_hash():
-    """One hash over every module that decides what a capture converts to.
-
-    Hashing only this file would let a change in collect.py or parse.py go unnoticed,
-    and a stale yaml looks exactly like a fresh one.
-    """
+    """One hash over every module that decides what a capture converts to, so a change
+    in collect.py or parse.py is not missed the way hashing only this file would."""
     here = Path(__file__).parent
     digest = hashlib.blake2b(digest_size=16)
     for name in CONVERTER_MODULES:

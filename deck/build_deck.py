@@ -1,13 +1,7 @@
-"""Turn a folder of rendered charts into a slide deck.
-
-Reads the manifest the plotting runner writes rather than the file names, so this script
-knows nothing about switches, metrics or test types. A chart type added upstream appears
-in the deck with no change here; a capture missing one produces a shorter deck, not a
-broken one.
-
-Charts appear in manifest order, grouped by scope - the charts covering the whole capture
-first, then one group per switch.
-"""
+"""Turn a folder of rendered charts into a slide deck, reading the manifest the
+plotting runner writes rather than the file names, so it knows nothing about switches,
+metrics or test types. Charts appear in manifest order, grouped by scope - the ones
+covering the whole capture first, then one group per switch."""
 
 from pathlib import Path
 import argparse
@@ -75,11 +69,8 @@ def _add_rule(slide):
 
 
 def _fit(image_path, max_width, max_height):
-    """Scale an image to fit a cell without distorting it.
-
-    Chart aspect ratios differ a lot - a 35-entry box plot is wide and short, a
-    temperature chart is nearly square - so a fixed size would squash one or the other.
-    """
+    """Scale an image to fit a cell without distorting it - chart aspect ratios differ
+    too much (a wide box plot, a near-square temperature chart) for a fixed size."""
     with Image.open(image_path) as image:
         width, height = image.size
     scale = min(max_width / width, max_height / height)
@@ -144,11 +135,8 @@ def group_by_scope(charts):
 
 
 def group_by_metric(charts):
-    """[(metric, charts)] - a slide holds one metric, so its charts are comparable.
-
-    A manifest with no metric field is one undifferentiated group, which is how decks
-    built before the field existed keep laying out the way they used to.
-    """
+    """[(metric, charts)] - a slide holds one metric, so its charts are comparable; no
+    metric field groups everything as one, matching decks built before the field existed."""
     groups = []
     for chart in charts:
         metric = chart.get("metric")
@@ -166,13 +154,9 @@ def paginate(items, size):
 
 
 def slide_plan(charts):
-    """[(metric, number, count, charts)] - one entry per slide, in order.
-
-    A metric that produced several charts gets slides of its own, so its pages sit
-    together and can be read against each other. Metrics that produced a single chart
-    are packed onto a shared slide first: one chart does not earn a slide, and four
-    unrelated ones still describe the same switch.
-    """
+    """[(metric, number, count, charts)] - one entry per slide. A metric with several
+    charts gets slides of its own so its pages sit together; single-chart metrics are
+    packed onto a shared slide, since one chart does not earn a slide of its own."""
     singles = []
     runs = []
     for metric, of_metric in group_by_metric(charts):
@@ -227,12 +211,9 @@ def add_testcase(presentation, manifest, charts_dir):
 
 
 def build_deck(manifest_paths, out_path, report="Report"):
-    """One deck from one or more testcases, each becoming its own section.
-
-    Charts live next to their own manifest, so testcases rendered into separate folders
-    stay separate - which is what lets several appear in one deck without overwriting
-    each other's files.
-    """
+    """One deck from one or more testcases, each its own section - charts live next to
+    their own manifest, so separate testcase folders can combine without overwriting
+    each other's files."""
     if isinstance(manifest_paths, (str, Path)):
         manifest_paths = [manifest_paths]
 
@@ -260,7 +241,7 @@ def build_deck(manifest_paths, out_path, report="Report"):
         testcase_word = "testcase"
     else:
         testcase_word = "testcases"
-    print(f"\nWrote {short_path(out_path)}\n"
+    print(f"Wrote {short_path(out_path)}\n"
           f"  {slides} slides from {charts} {chart_word} across "
           f"{len(manifests)} {testcase_word}")
     return presentation

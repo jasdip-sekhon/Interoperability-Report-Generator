@@ -1,38 +1,19 @@
-"""Every chart this report draws, and the reshaping each one needs.
-
-Each chart family is one block: the helper that turns measurement records into what the
-chart wants, then the draw_* that uses it. Every draw_* follows the same recipe:
-
-1. guard:    if records is None: return []
-2. reshape:  records -> {(switch, port, lane): value}
-3. report:   _report_unmatched, for interconnects with nothing measured
-4. draw:     _draw_per_switch - one chart per switch, split when a switch has many lanes
-5. record:   return one manifest entry per chart drawn
-
-Scope appears in no name: _draw_per_switch gives every interconnect chart one file per
-switch, and the manifest carries the result for the deck builder to group slides on.
-"""
+"""Every chart this report draws. Every draw_* follows the same recipe: guard (None
+records return []), reshape (records -> {(switch, port, lane): value}), report
+(_report_unmatched, for interconnects with nothing measured), draw (_draw_per_switch,
+one chart per switch), record (one manifest entry per chart drawn) - scope appears in
+no filename, since the manifest carries it for the deck builder to group slides on."""
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import info, warn                                 # noqa: E402
+from console import say, warn                                  # noqa: E402
+from metric_names import METRIC_NAMES                          # noqa: E402
 
 from layout import _draw_per_switch, _switch_info, plots
 from output import output_path
 from x_axis import _report_unmatched, report_link_up_coverage
-
-# a metric named in a sentence, not by its run.yml key: the key is what you type, the
-# name is what you read, and a log mixing the two reads as two different logs
-METRIC_NAMES = {
-    "flaps": "link flaps",
-    "ber": "BER",
-    "tcode": "T-Code",
-    "uncorrected_cw": "uncorrected codewords",
-    "link_up": "link-up time",
-    "temps": "temperature",
-}
 
 SATURATED_BER = 0.5  # BER >= 0.5 is the counter saturating, not a real reading
 SENSOR_LABEL = "Board Sensor"
@@ -114,8 +95,8 @@ def _lane_values(records, drop_at_or_above=None):
             reading_word = "reading"
         else:
             reading_word = "readings"
-        info(f"ignored {dropped} {reading_word} at or above {drop_at_or_above} as "
-             f"saturated; a link that wrong is a coin flip, not a measurement")
+        say(f"ignored {dropped} {reading_word} at or above {drop_at_or_above} as "
+            f"saturated; a link that wrong is a coin flip, not a measurement")
     return values
 
 
@@ -275,11 +256,8 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
 
 
 def _temp_readings_per_port(records, switch):
-    """One switch's module temperatures -> {port: [celsius]}, timestamps dropped.
-
-    Deliberately not _temps_per_port: that one inserts NaN at run seams so the line
-    chart breaks, and one NaN makes every quartile of a box NaN.
-    """
+    """One switch's module temperatures -> {port: [celsius]}, timestamps dropped -
+    deliberately not _temps_per_port, whose seam NaNs would make every quartile NaN."""
     if records is None:
         return {}
     readings = {}
@@ -295,11 +273,8 @@ def _temp_readings_per_port(records, switch):
 
 
 def draw_temperature_per_port(measurements, meta, keys, vendors, out_dir):
-    """One chart per switch: a box per port spanning the range that port ran through.
-
-    Soak cycles hot and cold, so a box here is bimodal - it stretches from the cold
-    mode to the hot one rather than describing a spread around a middle.
-    """
+    """One chart per switch: a box per port spanning the range it ran through - bimodal
+    on a soak, stretching cold mode to hot rather than describing a middle spread."""
     drawn = []
     for switch in keys:
         readings = _temp_readings_per_port(measurements["temps"], switch)

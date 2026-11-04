@@ -1,9 +1,6 @@
-"""The x axis: what the topology says is wired, matched to what the capture measured.
-
-interconnects.yml says 'SW0' and '1-1' where the measurements say '0', 1, 1, so keys are
-normalised onto the measurement side. A mismatch only shows as gaps, hence
-_report_unmatched.
-"""
+"""The x axis: what the topology says is wired, matched to what the capture measured -
+keys are normalised onto the measurement side (interconnects.yml's 'SW0'/'1-1' becomes
+'0'/1/1), and a mismatch only shows as a gap, hence _report_unmatched."""
 
 import sys
 from pathlib import Path
@@ -148,9 +145,10 @@ def _uncharted_in(records, axis):
     return found
 
 
-def report_uncharted_lanes(measurements, keys, names):
-    """Once per capture, not once per metric: the topology describes the rack, so the
-    ports it omits are the same for every metric measuring them."""
+def report_uncharted_lanes(measurements, keys, names, seen):
+    """Once per report, not once per capture, since these lanes are missing from the
+    topology file itself; seen is a set this call mutates, shared by every capture in
+    the report the same way the axis is."""
     axis = set(keys)
     measured_sections = []
     by_section = {}
@@ -171,6 +169,9 @@ def report_uncharted_lanes(measurements, keys, names):
         groups[signature].append(section)
 
     for signature in groups:
+        if signature in seen:
+            continue
+        seen.add(signature)
         sections = groups[signature]
         if len(groups) == 1 and len(sections) == len(measured_sections):
             which = "all metrics"
