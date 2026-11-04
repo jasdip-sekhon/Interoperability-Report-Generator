@@ -77,9 +77,20 @@ def _fit(image_path, max_width, max_height):
     return width * scale, height * scale
 
 
-def _place_chart(slide, chart, cell, charts_dir):
+def _caption_for(chart, slide_metric):
+    """What this chart is that the slide heading has not said already - its metric on a
+    slide mixing several, otherwise just which part of one axis it covers."""
+    caption = chart["title"]
+    if slide_metric and caption.startswith(slide_metric):
+        caption = caption[len(slide_metric):].strip()
+    return caption
+
+
+def _place_chart(slide, chart, cell, charts_dir, slide_metric=None):
     x, caption_y, picture_y, cell_w, cell_h = cell
-    _add_text(slide, (x, caption_y, cell_w, 0.24), chart["title"], 10)
+    caption = _caption_for(chart, slide_metric)
+    if caption:
+        _add_text(slide, (x, caption_y, cell_w, 0.24), caption, 10)
     path = charts_dir / chart["file"]
     width, height = _fit(path, cell_w, cell_h)
     # centre it horizontally in the cell, so narrow charts are not left-stranded
@@ -115,12 +126,12 @@ def cells_for(count):
     return GRID_CELLS
 
 
-def add_chart_slide(presentation, heading, charts, charts_dir):
+def add_chart_slide(presentation, heading, charts, charts_dir, slide_metric=None):
     slide = _blank_slide(presentation)
     _add_text(slide, HEADING, heading, 16, bold=True)
     _add_rule(slide)
     for chart, cell in zip(charts, cells_for(len(charts))):
-        _place_chart(slide, chart, cell, charts_dir)
+        _place_chart(slide, chart, cell, charts_dir, slide_metric)
     return slide
 
 
@@ -180,11 +191,25 @@ def slide_plan(charts):
     return plan
 
 
-def _heading_for(scope, metric, page_number, page_count):
+def _device_of(charts):
+    """Whatever the charts say they came from - one scope is one device, so the first
+    that names it speaks for the slide."""
+    for chart in charts:
+        if chart.get("device"):
+            return chart["device"]
+    return None
+
+
+def _heading_for(name, scope, device, metric, page_number, page_count):
+    # everything true of the whole slide is said here, once: the testcase (a slide
+    # scrolled to on its own must still name it), the switch, and what that switch is
+    heading = name
     if scope == "all":
-        heading = "Across all switches"
+        heading = f"{heading} — Across all switches"
     else:
-        heading = f"Switch {scope}"
+        heading = f"{heading} — Switch {scope}"
+        if device:
+            heading = f"{heading} ({device})"
     if metric:
         heading = f"{heading} — {metric}"
     if page_count > 1:
@@ -203,9 +228,11 @@ def add_testcase(presentation, manifest, charts_dir):
     add_section_slide(presentation, f"{name} Plots")
     slides = 1
     for scope, charts in group_by_scope(manifest["charts"]):
+        device = _device_of(charts)
         for metric, number, count, page in slide_plan(charts):
-            add_chart_slide(presentation, _heading_for(scope, metric, number, count),
-                            page, charts_dir)
+            add_chart_slide(presentation,
+                            _heading_for(name, scope, device, metric, number, count),
+                            page, charts_dir, metric)
             slides = slides + 1
     return slides
 

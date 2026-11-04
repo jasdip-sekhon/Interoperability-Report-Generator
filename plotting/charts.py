@@ -42,12 +42,13 @@ def draw_flaps_by_switch(measurements, keys, labels, out_dir):
     records = measurements["flaps"]
     if records is None:
         return []
-    title = "Link flaps by switch"
+    # the scope says "across all switches", so the title need not say it again
+    title = "Link flaps"
     plots.bargraph(_totals_per_switch(records), keys, labels,
-                   title=title, ylabel="Flaps",
+                   title="", ylabel="Flaps",
                    out_path=output_path("flaps.png", out_dir))
     return [{"file": "flaps.png", "title": title, "scope": "all",
-             "metric": "Link flaps by switch"}]
+             "metric": title, "device": None}]
 
 
 def _lane_scalars(records, field):
@@ -69,7 +70,6 @@ def draw_flaps_by_interconnect(measurements, meta, keys, labels, out_dir):
     _report_unmatched(keys, values, "link flap")
     return _draw_per_switch(plots.bargraph, values, keys, labels, meta,
                             stem="link_flap_bar", metric="Link flap count",
-                            title="Link flap count by interconnect",
                             ylabel="Flaps (max per reading)", out_dir=out_dir)
 
 
@@ -106,9 +106,10 @@ def draw_ber(measurements, meta, keys, labels, out_dir):
         return []
     values = _lane_values(records, drop_at_or_above=SATURATED_BER)
     _report_unmatched(keys, values, "BER")
+    # which instrument read it changes what the numbers mean, so it rides with the name
     return _draw_per_switch(plots.box_plot, values, keys, labels, meta,
-                            stem="pre_fec_ber_box", metric="Pre-FEC BER",
-                            title=f"Pre-FEC BER by interconnect ({meta['ber_source']})",
+                            stem="pre_fec_ber_box",
+                            metric=f"Pre-FEC BER ({meta['ber_source']})",
                             ylabel="Pre-FEC BER", out_dir=out_dir,
                             spec_max=SPEC_BER, log=True)
 
@@ -121,7 +122,6 @@ def draw_tcode(measurements, meta, keys, labels, out_dir):
     _report_unmatched(keys, values, "T-Code")
     return _draw_per_switch(plots.dot_plot, values, keys, labels, meta,
                             stem="tcode_dot", metric="T-Code",
-                            title="T-Code by interconnect",
                             ylabel="T-Code", out_dir=out_dir,
                             spec_max=SPEC_TCODE)
 
@@ -136,7 +136,6 @@ def draw_uncorrected_cw(measurements, meta, keys, labels, out_dir):
     _report_unmatched(keys, values, "uncorrected codeword")
     return _draw_per_switch(plots.dot_plot, values, keys, labels, meta,
                             stem="uncorrected_cw_dot", metric="Uncorrected codewords",
-                            title="Uncorrected codewords by interconnect",
                             ylabel="Uncorrected codewords", out_dir=out_dir,
                             spec_max=SPEC_UNCORRECTED_CW)
 
@@ -156,7 +155,6 @@ def draw_link_up(measurements, meta, keys, labels, out_dir):
     report_link_up_coverage(records, keys)
     return _draw_per_switch(plots.box_plot, values, keys, labels, meta,
                             stem="link_up_box", metric="Link-up time",
-                            title="Link-up time by interconnect",
                             ylabel="Link-up time (s)", out_dir=out_dir,
                             spec_max=_link_up_spec(meta))
 
@@ -231,9 +229,9 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
         ports = sorted(temps)
         info, device = _switch_info(meta, switch)
         name = f"temp_switch_{switch}.png"
-        title = f"Module temperature over time — switch {switch} ({device})"
+        title = "Module temperature over time"
         plots.value_series(temps, ports,
-                           title=title,
+                           title="",
                            ylabel="Temperature (°C)",
                            xlabel="Elapsed time (hours)",
                            out_path=output_path(name, out_dir),
@@ -243,7 +241,7 @@ def draw_temperature_over_time(measurements, meta, keys, seams, out_dir):
                                                          switch, seams),
                            overlay_label=SENSOR_LABEL)
         drawn.append({"file": name, "title": title, "scope": switch,
-                      "metric": "Module temperature over time"})
+                      "metric": title, "device": device})
     if flat_switches:
         if len(flat_switches) == 1:
             switch_word = "switch has"
@@ -290,13 +288,13 @@ def draw_temperature_per_port(measurements, meta, keys, vendors, out_dir):
                 labels.append(f"{port}_{vendor}")
         info, device = _switch_info(meta, switch)
         name = f"temp_per_port_sw{switch}.png"
-        title = f"Module temperature per port — switch {switch} ({device})"
+        title = "Module temperature per port"
         plots.box_plot(readings, ports, labels,
-                       title=title,
+                       title="",
                        ylabel="Temperature (°C)",
                        out_path=output_path(name, out_dir),
                        spec_min=info.get("temp_min"),
                        spec_max=info.get("temp_max"))
         drawn.append({"file": name, "title": title, "scope": switch,
-                      "metric": "Module temperature per port"})
+                      "metric": title, "device": device})
     return drawn

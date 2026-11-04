@@ -23,6 +23,7 @@ from build_deck import (
     group_by_metric,
     group_by_scope,
     paginate,
+    _device_of,
     _fit,
     _heading_for,
 )
@@ -75,11 +76,19 @@ assert paginate([], 4) == []
 assert paginate([1], 4) == [[1]]
 print("ok  paginate: splits on the grid size, no empty trailing page")
 
-assert _heading_for("all", None, 1, 1) == "Across all switches"
-assert _heading_for("0", None, 1, 1) == "Switch 0"
-assert _heading_for("0", "Pre-FEC BER", 1, 1) == "Switch 0 — Pre-FEC BER"
-assert _heading_for("0", "Pre-FEC BER", 2, 3) == "Switch 0 — Pre-FEC BER (page 2 of 3)"
-print("ok  _heading_for: names the metric, pages only when there is more than one")
+assert _heading_for("Soak", "all", None, None, 1, 1) == "Soak — Across all switches"
+assert _heading_for("Soak", "0", None, None, 1, 1) == "Soak — Switch 0"
+assert _heading_for("Soak", "0", "AZ9074 — 10.0.0.1", None, 1, 1) ==     "Soak — Switch 0 (AZ9074 — 10.0.0.1)"
+assert _heading_for("Soak", "0", None, "Pre-FEC BER", 1, 1) == "Soak — Switch 0 — Pre-FEC BER"
+assert (_heading_for("Soak", "0", None, "Pre-FEC BER", 2, 3)
+       == "Soak — Switch 0 — Pre-FEC BER (page 2 of 3)")
+# a device belongs to the switch, so "all switches" never claims one
+assert _heading_for("Soak", "all", "AZ9074 — 10.0.0.1", "T-Code", 1, 1) ==     "Soak — Across all switches — T-Code"
+print("ok  _heading_for: testcase, switch, device and metric, each said once")
+
+assert _device_of([{"file": "a.png"}, {"file": "b.png", "device": "AZ9074"}]) == "AZ9074"
+assert _device_of([{"file": "a.png"}]) is None
+print("ok  _device_of: the first chart that names the device speaks for the slide")
 
 
 # --- a slide holds one metric, and its charts share the room ---------------------
@@ -155,7 +164,8 @@ for slide in deck.slides:
             headings.append(shape.text_frame.text.strip())
             break
 assert "Shut_Unshut Plots" in headings, headings
-assert "Switch 99-7" in headings, "an unrecognised switch id still gets its own slide"
+assert "Shut_Unshut — Switch 99-7" in headings, \
+    "an unrecognised switch id still gets its own slide, named with its testcase"
 total = sum(len(slide_pictures(s)) for s in deck.slides)
 assert total == 3, "every chart in the manifest is placed, known or not"
 print("ok  unknown metrics, switches and test types all survive untouched")

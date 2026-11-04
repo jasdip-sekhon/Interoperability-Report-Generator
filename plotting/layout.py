@@ -36,25 +36,27 @@ def _chunks(keys, labels):
     return chunks
 
 
-def _draw_per_switch(draw, values, keys, labels, meta, stem, metric, title, ylabel,
+def _draw_per_switch(draw, values, keys, labels, meta, stem, metric, ylabel,
                      out_dir, spec_max=None, log=False):
-    """One chart per switch, split again past the axis limit - numbered "(2 of 4)" with
-    no noun, since the deck heading above it already says "page N of M" about slides."""
+    """One chart per switch, split past the axis limit and titled by its metric alone -
+    the switch and its device are fields, for the deck to head the whole slide once."""
     drawn = []
     for switch, switch_keys, switch_labels in _split_by_switch(keys, labels):
         chunks = _chunks(switch_keys, switch_labels)
+        device = _switch_info(meta, switch)[1]
         number = 1
         for chunk_keys, chunk_labels in chunks:
-            device = _switch_info(meta, switch)[1]
-            chart_title = f"{title} — switch {switch} ({device})"
+            chart_title = metric
             name = f"{stem}_sw{switch}.png"
             if len(chunks) > 1:
-                chart_title = f"{chart_title} ({number} of {len(chunks)})"
+                # a part is a slice of this switch's own axis; the deck's "page" counts
+                # slides, so the two numbers that can appear together are named apart
+                chart_title = f"{metric} (part {number} of {len(chunks)})"
                 name = f"{stem}_sw{switch}_p{number}.png"
-            draw(values, chunk_keys, chunk_labels, title=chart_title, ylabel=ylabel,
+            draw(values, chunk_keys, chunk_labels, title="", ylabel=ylabel,
                  out_path=output_path(name, out_dir), spec_max=spec_max, log=log)
             drawn.append({"file": name, "title": chart_title, "scope": switch,
-                          "metric": metric})
+                          "metric": metric, "device": device})
             number = number + 1
     return drawn
 
