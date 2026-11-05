@@ -314,7 +314,12 @@ def build_deck(manifest_paths, out_path, report="Report"):
         slides = slides + add_testcase(presentation, manifest, Path(path).parent)
         charts = charts + len(manifest["charts"])
 
-    presentation.save(out_path)
+    # renamed into place: an interrupted save leaves the deck that was there, which may
+    # be the annotated one, rather than a truncated file and nothing to fall back on
+    partial = Path(out_path).with_suffix(".partial")
+    presentation.save(partial)
+    partial.replace(out_path)
+
     if charts == 1:
         chart_word = "chart"
     else:

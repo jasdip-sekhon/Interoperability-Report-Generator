@@ -20,7 +20,7 @@ output/<report>/   one self-contained folder per report: deck, charts, x-axis la
 Verify any change with both, in this order:
 
 ```bash
-python tests/run_all.py     # ten test files, asserts not a framework
+python tests/run_all.py     # twelve test files, asserts not a framework
 python main.py              # the fixtures, end to end, ~10 seconds
 ```
 
@@ -33,22 +33,30 @@ One `run_<name>.yml` per report. Schema is in README; the parts that need judgem
 - **Pair DUT/Ref by asking, not by filename.** The halves of one testcase are spelled
   differently in real data — `ShutunShut-Ln1-1-DUT` with `ShutunShut_Lane1_1_Ref`,
   `lane1-1` with `ln1-1`. Guessing produces a plausible deck that is wrong.
-- **`metrics` is per test type**, and differs by rack. What the hand-built reports chart:
+- **`metrics` is per test type**, and differs by rack. What the real configs chart:
 
   | testcase | metrics |
   |---|---|
-  | Soak | `ber, tcode, temps` |
-  | Reset | `flaps, ber, link_up, temps` |
-  | Shut No-Shut | `flaps, link_up, temps` |
-  | Lane x-y | `flaps, temps` (Rack6) or `+ link_up` (R12) |
+  | Soak | `flaps, ber, tcode, uncorrected_cw, temps` |
+  | Reset | `flaps, link_up, temps` |
+  | Shut No-Shut All Lanes | `flaps, link_up, temps` |
+  | Shut No-Shut Lane x-y | `flaps, temps` (Rack6) or `+ link_up` (R12) |
 
-  Omitting `metrics` charts everything: 407 charts instead of 329 on R12-TB1.
-- **`recovery_commanded: true`** only where the test commands links back up (reset,
-  shut). Wrong here gave 506 false "never recovered" lanes once.
+  `ber` appears only on the soak: `_collect_fec_metrics` collects it for nothing else,
+  so listing it elsewhere draws no chart and warns. Omitting `metrics` charts every
+  one of them. R12-TB1 is 319 charts as configured, Rack6-TB1 is 275.
+- **`recovery_commanded: true`** only where the test commands links back up. Wrong here
+  gave 506 false "never recovered" lanes once, so it is set deliberately per testcase
+  rather than inferred - the lane cases do not carry it, the reset and all-lanes do.
+- **Deck order is config order.** A `dut:`/`ref:` pair renders as two sections, DUT
+  first. The shut family is written as six single-`capture:` testcases instead, so every
+  DUT section precedes every Ref one; that is the only reason they are not paired.
 
 ### 2. A topology workbook
 
-Only one sheet is read: **`Chart label lookup`**, with exactly these columns:
+Only one sheet is read: **`Chart label lookup`**. Four of its columns are load-bearing
+- `Rx Switch`, `Rx Port-Lane`, `Rx Vendor` and the label - and nothing reads the `Tx`
+ones; the parser takes whatever headers it finds, so extra columns are harmless:
 
 | Rx Switch | Rx Port-Lane | Rx Vendor | Tx Switch | Tx Port-Lane | Tx Vendor | FEC-BER / T-Code x-axis label |
 |---|---|---|---|---|---|---|
@@ -79,9 +87,11 @@ becomes `0` while `4-33` and `Ixia` stay as they are.
   minutes instead of 1.5.
 - **Test type comes from the config, not sheet detection.** Detection calls every
   non-reset capture a soak, which throws away the recovery signal.
-- Every render prints the topology it used. `x axis from ...fixture.xlsx, 35
-  interconnects` against real data means the topology was built from the wrong file.
-  Each report writes its own copy under `output/<report>/`, so racks cannot collide;
+- A report names the topology it used, once, before the first testcase:
+  `Interconnect order from interconnects_sample.xlsx, 35 interconnects` against real
+  data means it was built from the wrong file. Each report writes its own copy under
+  `output/<report>/` and stamps the config that wrote the folder, so a second config
+  claiming the same `report:` name is warned about rather than silently overwriting;
   `interconnects/interconnects.yml` remains only as the default for standalone runs.
 
 ## Conventions

@@ -47,11 +47,11 @@ topology: C:/data/R12_TB1_Tx_Rx_Interconnects.xlsx
 
 testcases:
   - name: Soak
-    metrics: [ber, tcode, temps]
+    metrics: [flaps, ber, tcode, uncorrected_cw, temps]
     capture: C:/data/R12-TB1-Traffic_Soak_20260816.xlsx
 
   - name: Reset
-    metrics: [flaps, ber, link_up, temps]
+    metrics: [flaps, link_up, temps]
     recovery_commanded: true
     dut: C:/data/R12-TB1-Reset_DUT_20260717.xlsx
     ref: C:/data/R12-TB1-Reset_Ref_20260718.xlsx
@@ -61,15 +61,24 @@ A testcase captured once uses `capture:`; one captured as a DUT run and a Ref ru
 `dut:` and `ref:`. For anything else — three or more runs, or labels other than DUT/Ref
 — use `captures:` instead, a list of files (or `{label, file}` for a labelled one).
 
+Testcases appear in the deck in the order written here, and a `dut:`/`ref:` pair appears
+as two sections, DUT first. To group a family differently — every DUT section before any
+Ref section, say — give each run its own testcase with a single `capture:` and order them
+as you want them read.
+
+`ber` only means something on a soak: a test that takes links down saturates the counter,
+so BER is collected for a soak and nothing else. Listing it elsewhere draws no chart and
+says so.
+
 | setting | what it does | needed? |
 |---|---|---|
 | `report` | names the deck and its folder, e.g. `output/r12-tb1/r12-tb1.pptx` | yes |
-| `topology` | the Tx/Rx interconnects spreadsheet, for real x-axis labels | no |
+| `topology` | the Tx/Rx interconnects spreadsheet, for real x-axis labels | in practice |
 | `name` | the section heading in the deck | yes |
 | `capture` | the one spreadsheet, for a testcase run once | one of these three |
 | `dut`, `ref` | the two spreadsheets, for a testcase run as DUT and Ref | |
 | `captures` | a list of spreadsheets, for anything `capture`/`dut`/`ref` can't say | |
-| `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `link_up`, `temps`. Omit to chart all | no |
+| `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `uncorrected_cw`, `link_up`, `temps`. Omit to chart all | no |
 | `recovery_commanded` | `true` if this test tells links to come back up | no |
 
 ## Without a config
