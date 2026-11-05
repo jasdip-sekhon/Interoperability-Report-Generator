@@ -101,7 +101,7 @@ def _read_capture(wb):
     )
 
 
-def collect_measurements(wb, test_type, recovery_commanded):
+def collect_measurements(wb, test_type):
     """Every section of one capture; a section is null when its sheet was absent,
     which is a different fact from an empty list meaning "found nothing"."""
     log_records, flap_records, module_records, sensor_records = _read_capture(wb)
@@ -128,7 +128,7 @@ def collect_measurements(wb, test_type, recovery_commanded):
     if flap_records is None:
         flaps = None
     else:
-        flaps = collect_link_flaps(flap_records, recovery_commanded)
+        flaps = collect_link_flaps(flap_records)
 
     if module_records is None or not timestamps:
         temps = None
@@ -152,7 +152,7 @@ def collect_measurements(wb, test_type, recovery_commanded):
     }
 
 
-def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
+def data_to_yml(data, yml_file, test_type=None):
     # read_only streams the sheets instead of building the whole workbook in memory;
     # on a real 361MB soak that is the difference between seconds and half an hour
     wb = load_workbook(data, read_only=True)
@@ -163,12 +163,12 @@ def data_to_yml(data, yml_file, test_type=None, recovery_commanded=False):
         test_type = _detect_test_type(wb)
 
     try:
-        measurements = collect_measurements(wb, test_type, recovery_commanded)
+        measurements = collect_measurements(wb, test_type)
     finally:
         # read_only holds the workbook's zip open until this is called
         wb.close()
 
-    measurements["meta"]["source"] = _source_stamp(data, test_type, recovery_commanded)
+    measurements["meta"]["source"] = _source_stamp(data, test_type)
 
     # renamed into place: an interrupt leaves the old yaml, not half of a new one
     partial = Path(yml_file).with_suffix(".partial")

@@ -48,7 +48,7 @@ work = tempfile.mkdtemp()
 # --- reset_dut_sample.xlsx: flaps, and BER from the module's own VDM columns ------
 
 reset_yml = os.path.join(work, "reset_dut_sample.yml")
-data_to_yml(RESET, reset_yml, test_type="reset", recovery_commanded=True)
+data_to_yml(RESET, reset_yml, test_type="reset")
 reset = yaml.safe_load(open(reset_yml, encoding="utf-8"))
 
 col, rows = _sheet(RESET, "6_get_link_flap")
@@ -123,7 +123,7 @@ _check(actual_temps, expected_temps, "temperature", 5)
 # --- soak_sample.xlsx: BER, T-Code and uncorrected codewords from get_fec_counter -
 
 soak_yml = os.path.join(work, "soak_sample.yml")
-data_to_yml(SOAK, soak_yml, test_type="soak", recovery_commanded=False)
+data_to_yml(SOAK, soak_yml, test_type="soak")
 soak = yaml.safe_load(open(soak_yml, encoding="utf-8"))
 
 col, rows = _sheet(SOAK, "5_get_fec_counter")

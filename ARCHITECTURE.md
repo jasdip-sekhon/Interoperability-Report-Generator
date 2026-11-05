@@ -77,9 +77,9 @@ no change to `deck/`. Each testcase gets its own folder, which the runner clears
 
 The charts read the measurement yaml, never the spreadsheets. A capture is reconverted
 only when its yaml would come out different — the spreadsheet changed, `data_to_yml.py`
-changed, or the testcase's `test_type` or `recovery_commanded` changed. Each yaml records
-all four in `meta.source`, and `is_current` reuses the file only on an exact match, so a
-parser fix invalidates every yaml rather than leaving them quietly wrong. Both print what they skipped and why — a missing
+changed, or the testcase's `test_type` changed. Each yaml records all three in
+`meta.source`, and `is_current` reuses the file only on an exact match, so a parser fix
+invalidates every yaml rather than leaving them quietly wrong. Both print what they skipped and why — a missing
 sheet, a saturated reading, a lane with no topology entry — so a thin chart has a stated
 reason rather than being silently thin.
 

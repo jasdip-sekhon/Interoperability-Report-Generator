@@ -83,10 +83,6 @@ def prepare_measurements(testcase, use_cache=True):
     """Convert each capture; returns [(label, measurement yaml)]. Each run is charted
     on its own, since a DUT run and a Ref run reset different hardware and merging
     would seam every time series - the merged yaml is written anyway, for the union."""
-    recovery_commanded = testcase.get("recovery_commanded")
-    if recovery_commanded is None:
-        recovery_commanded = False
-
     # the configured name, not a guess from the sheets: detection calls every
     # non-reset capture a soak, losing the recovery signal
     test_type = _slug(testcase["name"])
@@ -100,10 +96,10 @@ def prepare_measurements(testcase, use_cache=True):
     for label, capture in _capture_entries(testcase):
         source = _resolve(capture)
         target = MEASUREMENTS_DIR / (source.stem + ".yml")
-        if use_cache and is_current(source, target, test_type, recovery_commanded):
+        if use_cache and is_current(source, target, test_type):
             report_cached_capture(source, target)
         else:
-            data_to_yml(source, target, test_type, recovery_commanded)
+            data_to_yml(source, target, test_type)
         converted.append((label, target))
         paths.append(target)
         # the merge summary should say "DUT"/"Ref", not an internal yaml filename

@@ -52,7 +52,6 @@ testcases:
 
   - name: Reset
     metrics: [flaps, link_up, temps]
-    recovery_commanded: true
     dut: C:/data/R12-TB1-Reset_DUT_20260717.xlsx
     ref: C:/data/R12-TB1-Reset_Ref_20260718.xlsx
 ```
@@ -79,7 +78,6 @@ says so.
 | `dut`, `ref` | the two spreadsheets, for a testcase run as DUT and Ref | |
 | `captures` | a list of spreadsheets, for anything `capture`/`dut`/`ref` can't say | |
 | `metrics` | which measurements to chart: any of `flaps`, `ber`, `tcode`, `uncorrected_cw`, `link_up`, `temps`. Omit to chart all | no |
-| `recovery_commanded` | `true` if this test tells links to come back up | no |
 
 ## Without a config
 

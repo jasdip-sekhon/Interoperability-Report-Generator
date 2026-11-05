@@ -92,14 +92,6 @@ prepare_measurements(testcase, use_cache=False)
 assert os.path.getmtime(yml) != first, "--no-cache must reconvert regardless"
 print("ok  cache: --no-cache reconverts anyway")
 
-# recovery_commanded changes never_recovered, so it must not be served from cache
-stamp = os.path.getmtime(yml)
-prepare_measurements({"name": "Soak", "captures": [CAPTURE],
-                      "recovery_commanded": True})
-assert os.path.getmtime(yml) != stamp, \
-    "recovery_commanded changes what the yaml says and must invalidate it"
-print("ok  cache: a changed parameter invalidates")
-
 # the testcase name becomes test_type, which the converter records
 stamp = os.path.getmtime(yml)
 prepare_measurements({"name": "Reset", "captures": [CAPTURE]})

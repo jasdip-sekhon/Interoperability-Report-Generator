@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import warn                                       # noqa: E402
+from console import warn, warn_detail                          # noqa: E402
 
 from parse import (_elapsed_hours, _group_by_lane, _lanes_to_records, _norm_switch,
                    _parse_temp)
@@ -13,16 +13,34 @@ from parse import (_elapsed_hours, _group_by_lane, _lanes_to_records, _norm_swit
 VDM_PREFEC_PREFIX = "VDM_Pre-FEC_BER_Average_Media_Input_Lane_"
 SENSOR_COLUMN = "mb_asc5_temp1_Q88_frontrighttop_C"
 
-def collect_link_flaps(flap_records, recovery_commanded=False):
-    """Per-lane flap counts, and whether a lane never came back - null unless the caller
-    says recovery was commanded, since a lane never asked to recover reads as never
-    having recovered, and a soak or lane test would flag hundreds of healthy lanes."""
-    lanes = _group_by_lane(flap_records, "Down->Up")
+def _report_stuck_lanes(flap_data):
+    stuck = []
+    for record in flap_data:
+        if record["never_recovered"]:
+            stuck.append((record["switch"], record["port"], record["lane"]))
+    if not stuck:
+        return
+    named = []
+    for switch, port, lane in stuck:
+        named.append(f"switch {switch} port {port} lane {lane}")
+    if len(stuck) == 1:
+        lane_word = "lane"
+    else:
+        lane_word = "lanes"
+    warn_detail(f"{len(stuck)} {lane_word} went down during this capture and never "
+                f"came back up:", ", ".join(named))
+
+def collect_link_flaps(flap_records):
+    """Per-lane flap counts, and whether a lane went down and never came back - directly
+    from Up->Down and Down->Up, not guessed from outside: a lane with neither column
+    ever moving was not part of whatever this test took down, not a failure."""
+    down_up = _group_by_lane(flap_records, "Down->Up")
+    up_down = _group_by_lane(flap_records, "Up->Down")
 
     flap_data = []
-    for key in lanes:
+    for key in down_up:
         switch, port, lane = key
-        raw_values = lanes[key]
+        raw_values = down_up[key]
 
         # Fixes the "Down->Up" count by subtracting 1 from each value
         count = 0
@@ -33,14 +51,15 @@ def collect_link_flaps(flap_records, recovery_commanded=False):
             if corrected > count:
                 count = corrected
 
-        # Determine if the link never recovered (all raw values are 0)
-        if not recovery_commanded:
-            never_recovered = None
-        else:
-            never_recovered = True
-            for raw in raw_values:
-                if raw != 0:
-                    never_recovered = False
+        went_down = False
+        for raw in up_down.get(key, []):
+            if raw is not None and raw > 0:
+                went_down = True
+        came_back = False
+        for raw in raw_values:
+            if raw is not None and raw > 0:
+                came_back = True
+        never_recovered = went_down and not came_back
 
         flap_data.append({
             "switch": switch,
@@ -49,6 +68,7 @@ def collect_link_flaps(flap_records, recovery_commanded=False):
             "count": count,
             "never_recovered": never_recovered,
         })
+    _report_stuck_lanes(flap_data)
     return flap_data
 
 

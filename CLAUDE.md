@@ -45,9 +45,6 @@ One `run_<name>.yml` per report. Schema is in README; the parts that need judgem
   `ber` appears only on the soak: `_collect_fec_metrics` collects it for nothing else,
   so listing it elsewhere draws no chart and warns. Omitting `metrics` charts every
   one of them. R12-TB1 is 319 charts as configured, Rack6-TB1 is 275.
-- **`recovery_commanded: true`** only where the test commands links back up. Wrong here
-  gave 506 false "never recovered" lanes once, so it is set deliberately per testcase
-  rather than inferred - the lane cases do not carry it, the reset and all-lanes do.
 - **Deck order is config order.** A `dut:`/`ref:` pair renders as two sections, DUT
   first. The shut family is written as six single-`capture:` testcases instead, so every
   DUT section precedes every Ref one; that is the only reason they are not paired.
@@ -80,6 +77,11 @@ becomes `0` while `4-33` and `Ixia` stay as they are.
   (`SATURATED_BER`), never in the converter — raw data is not modified.
 - **Lane 0 means an un-broken-out port**, and the topology calls it lane 1. Both
   `_lane_values` and `_lane_scalars` index it under both.
+- **A lane never recovered when `Up->Down > 0` and `Down->Up == 0`** - it went down and
+  the counter never ticked back up. Both-zero means the lane was not part of whatever
+  this test took down, not a failure; a config flag once stood in for this and produced
+  12 and 8 false positives on the two real R12 Reset captures, all lanes that were
+  simply never touched. `get_link_status`'s per-repeat state agrees independently.
 - **Blank ≠ zero.** `null` = not measured, `0` = measured zero, `[]` = measured and
   nothing survived filtering. The bar chart marks measured zeros so they are not
   mistaken for gaps.
@@ -201,8 +203,8 @@ there is a real need for levels or a log file.
 ## Known rough edges
 
 - A capture is reconverted only when something that changes its yaml changes: the
-  spreadsheet, any converting module in `data/`, `test_type`, or `recovery_commanded`.
-  The stamp is `meta.source` in each yaml (see `cache.py`), and `--no-cache` ignores it.
+  spreadsheet, any converting module in `data/`, or `test_type`. The stamp is
+  `meta.source` in each yaml (see `cache.py`), and `--no-cache` ignores it.
   Hashing a 379 MB capture costs 0.8s against ~480s to convert it. If `data/` gains a
   module that parses, add it to `CONVERTER_MODULES` or the stamp stops covering it.
 - `test_charts.py` covers the reshaping helpers but never calls a `draw_*`. Dropping an

@@ -123,10 +123,7 @@ def _never_recovered_across(records):
     never-recovered overall, so a union here would invent failures."""
     flags = []
     for record in records:
-        if record["never_recovered"] is not None:
-            flags.append(record["never_recovered"])
-    if not flags:
-        return None
+        flags.append(record["never_recovered"])
     return all(flags)
 
 

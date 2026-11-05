@@ -50,8 +50,8 @@ switch 4-35   raw Down->Up = [0, 1, 2]   ->  corrected = [0, 1]
 All three cases in one switch: raw `1` is the expected single commanded recovery
 (corrected `0`), raw `2` is a genuine extra flap (corrected `1`), raw `0` is a lane that
 *never recovered at all* — which the `-1` correction collapses into the same corrected `0`
-as the normal case. That collapse is why `flap_never_recovered` has to be derived from the
-raw value separately.
+as the normal case. A reader that trusts only the corrected count cannot tell a healthy
+lane from one still down.
 
 Contrast `soak_sample.xlsx`, where every switch reads raw `0`: soak commands no recovery,
 so a "never recovered" signal is meaningless there. That is checklist §9.

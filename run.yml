@@ -17,6 +17,5 @@ testcases:
     capture: references/soak_sample.xlsx
 
   - name: Reset
-    recovery_commanded: true
     dut: references/reset_dut_sample.xlsx
     ref: references/reset_ref_sample.xlsx

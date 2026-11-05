@@ -1,9 +1,5 @@
-"""Tests for joining two runs of one testcase.
-
-The merge rules differ per field and one of them is the opposite of a union, so every
-rule gets an assertion. Output looks plausible whichever way the never_recovered rule
-goes; only the count distinguishes them, which is exactly why it is pinned here.
-"""
+"""Tests for joining two runs of one testcase - the merge rules differ per field, so
+every rule gets an assertion."""
 
 import os
 import tempfile
@@ -43,27 +39,6 @@ def run(start="2026-07-17 01:05:24", test_type="reset", ber_source="vdm", **sect
     return base
 
 
-# --- never_recovered intersects: the rule a union would get backwards -------------
-
-dut = run(flaps=[
-    lane("0", 1, 1, count=0, never_recovered=True),    # stuck here
-    lane("0", 1, 2, count=0, never_recovered=True),    # stuck here, not in ref
-])
-ref = run(flaps=[
-    lane("0", 1, 1, count=0, never_recovered=True),    # stuck in BOTH
-    lane("0", 1, 2, count=0, never_recovered=False),   # recovered in ref
-])
-flaps, _ = merge_flaps([dut, ref])
-by_lane = {(r["switch"], r["port"], r["lane"]): r for r in flaps}
-assert by_lane[("0", 1, 1)]["never_recovered"] is True, "stuck in both runs stays stuck"
-assert by_lane[("0", 1, 2)]["never_recovered"] is False, \
-    "recovered in one run means not never-recovered overall; a union would keep it True"
-before = 2 + 1
-after = sum(1 for r in flaps if r["never_recovered"])
-assert after == 1, f"intersect should give 1, a union would give 2 (got {after})"
-print(f"ok  never_recovered intersects: {before} flagged across runs -> {after} overall")
-
-
 # --- a lane only one run measured must survive -----------------------------------
 
 dut = run(ber=[lane("0", 1, 1, values=[1e-11])])
@@ -85,6 +60,24 @@ flaps, conflicts = merge_flaps([dut, ref])
 assert flaps[0]["count"] == 3, "a flap seen in either run really happened"
 assert conflicts == 1
 print("ok  flap count: max across runs, disagreement counted")
+
+
+# --- never_recovered intersects: the rule a union would get backwards -------------
+
+dut = run(flaps=[
+    lane("0", 1, 1, count=0, never_recovered=True),    # stuck here
+    lane("0", 1, 2, count=0, never_recovered=True),    # stuck here, not in ref
+])
+ref = run(flaps=[
+    lane("0", 1, 1, count=0, never_recovered=True),    # stuck in BOTH
+    lane("0", 1, 2, count=0, never_recovered=False),   # recovered in ref
+])
+flaps, _ = merge_flaps([dut, ref])
+by_lane = {(r["switch"], r["port"], r["lane"]): r for r in flaps}
+assert by_lane[("0", 1, 1)]["never_recovered"] is True, "stuck in both runs stays stuck"
+assert by_lane[("0", 1, 2)]["never_recovered"] is False, \
+    "recovered in one run means not never-recovered overall; a union would keep it True"
+print("ok  never_recovered intersects across runs")
 
 
 # --- a section absent from every run stays absent --------------------------------

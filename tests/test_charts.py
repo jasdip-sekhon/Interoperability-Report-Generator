@@ -53,8 +53,8 @@ print("ok  saturation filter: >= 0.5 dropped for BER, left alone otherwise")
 # --- some metrics are one number per lane, not a list of readings ----------------
 
 scalars = _lane_scalars([
-    {"switch": "0", "port": 1, "lane": 1, "count": 0, "never_recovered": False},
-    {"switch": "0", "port": 6, "lane": 1, "count": 2, "never_recovered": False},
+    {"switch": "0", "port": 1, "lane": 1, "count": 0},
+    {"switch": "0", "port": 6, "lane": 1, "count": 2},
 ], "count")
 assert scalars[("0", 1, 1)] == 0, "a measured zero is a value, not an absence"
 assert scalars[("0", 6, 1)] == 2
@@ -141,8 +141,8 @@ meta = {"test_type": "reset", "ber_source": "fec_counter",
         "switches": {"0": {"device_model": "SW-1", "device_ip": "10.0.0.1",
                            "temp_min": 0.0, "temp_max": 70.0}}}
 measurements = {
-    "flaps": [{"switch": "0", "port": 1, "lane": 1, "count": 2, "never_recovered": False},
-              {"switch": "0", "port": 1, "lane": 2, "count": 0, "never_recovered": False}],
+    "flaps": [{"switch": "0", "port": 1, "lane": 1, "count": 2},
+              {"switch": "0", "port": 1, "lane": 2, "count": 0}],
     "ber": [lane("0", 1, 1, [1e-11, 2e-11]), lane("0", 1, 2, [3e-11])],
     "tcode": [lane("0", 1, 1, [1, 2]), lane("0", 1, 2, [0])],
     "link_up": [lane("0", 1, 1, [4.0, 5.0]), lane("0", 1, 2, [6.0])],

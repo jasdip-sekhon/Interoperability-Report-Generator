@@ -15,7 +15,6 @@ testcases:
   - name: Reset
     # BER is soak-only, so no reset or shut testcase ever has it
     metrics: [flaps, link_up, temps]
-    recovery_commanded: true
     captures:
       - label: DUT
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-reset-DUT_20260709_204321.xlsx
@@ -25,7 +24,6 @@ testcases:
   # the shut family, every DUT before any Ref; All Lanes shuts every lane of every port
   - name: Shut No-Shut All Lanes DUT
     metrics: [flaps, link_up, temps]
-    recovery_commanded: true
     capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
 
   - name: Shut No-Shut Lane 1-1 DUT
@@ -39,7 +37,6 @@ testcases:
 
   - name: Shut No-Shut All Lanes Ref
     metrics: [flaps, link_up, temps]
-    recovery_commanded: true
     capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
 
   - name: Shut No-Shut Lane 1-1 Ref

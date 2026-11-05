@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from console import line, say                                  # noqa: E402
+from console import line, say, warn_detail                     # noqa: E402
 
 from merge_rules import _index
 
@@ -61,24 +61,27 @@ def _section_line(runs, labels, merged, section, fields):
     return line + _only_in(runs, labels, section, fields)
 
 
-def _count_never_recovered(records):
-    total = 0
-    for record in records:
+def _stuck_in_every_run(merged):
+    """Lanes never_recovered intersects across every run - a result worth stating even
+    in the informational summary, since no chart marks a stuck lane as such."""
+    stuck = []
+    for record in merged["flaps"] or []:
         if record["never_recovered"]:
-            total = total + 1
-    return total
+            stuck.append((record["switch"], record["port"], record["lane"]))
+    if not stuck:
+        return
+    named = []
+    for switch, port, lane in stuck:
+        named.append(f"switch {switch} port {port} lane {lane}")
+    if len(stuck) == 1:
+        lane_word = "lane"
+    else:
+        lane_word = "lanes"
+    warn_detail(f"{len(stuck)} {lane_word} went down in every run and never came back:",
+                ", ".join(named))
 
 
-def _report_never_recovered(runs, merged):
-    before = []
-    for run in runs:
-        before.append(str(_count_never_recovered(run["flaps"])))
-    after = _count_never_recovered(merged["flaps"])
-    say(f"Never recovered: {' + '.join(before)} -> {after} (intersected: a lane that "
-        f"recovered in any run is not never-recovered)")
-
-
-def _report_informational(labels, out_path, conflicts):
+def _report_informational(labels, merged, out_path, conflicts):
     """One line, because nothing reads the merged yaml: the charts come from each run
     on its own, and a reconciliation of DUT against Ref is not a result."""
     line(f"Merged {' + '.join(labels)} -> {Path(out_path).name} (informational union; "
@@ -89,11 +92,12 @@ def _report_informational(labels, out_path, conflicts):
         else:
             lane_word = "lanes differ"
         say(f"{conflicts} {lane_word} in flap count between the runs")
+    _stuck_in_every_run(merged)
 
 
 def _report(runs, labels, merged, offsets, conflicts, out_path, quiet):
     if quiet:
-        _report_informational(labels, out_path, conflicts)
+        _report_informational(labels, merged, out_path, conflicts)
         return
     say(f"Merged {len(runs)} runs: {', '.join(labels)}")
     lane = ["switch", "port", "lane"]
@@ -103,8 +107,7 @@ def _report(runs, labels, merged, offsets, conflicts, out_path, quiet):
         # a table row, not prose: printed directly so its columns stay aligned
         print(_section_line(runs, labels, merged, section, fields))
 
-    _report_never_recovered(runs, merged)
-
+    _stuck_in_every_run(merged)
     for i in range(1, len(labels)):
         say(f"{labels[i]} time-shifted +{offsets[i]:.2f}h onto the shared timeline")
     if conflicts:

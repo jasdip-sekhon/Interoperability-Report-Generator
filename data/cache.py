@@ -30,7 +30,7 @@ def _converter_hash():
     return digest.hexdigest()
 
 
-def _source_stamp(data, test_type, recovery_commanded):
+def _source_stamp(data, test_type):
     """Everything that can change this yaml's contents."""
     return {
         "file": str(Path(data).resolve()),
@@ -38,11 +38,10 @@ def _source_stamp(data, test_type, recovery_commanded):
         # a parser fix leaves every existing yaml wrong, and nothing else would notice
         "converter": _converter_hash(),
         "test_type": test_type,
-        "recovery_commanded": recovery_commanded,
     }
 
 
-def is_current(data, yml_file, test_type, recovery_commanded):
+def is_current(data, yml_file, test_type):
     """Whether yml_file was built from exactly these inputs, by this converter."""
     yml_file = Path(yml_file)
     if not yml_file.exists():
@@ -60,4 +59,4 @@ def is_current(data, yml_file, test_type, recovery_commanded):
     held = meta.get("source")
     if held is None:
         return False
-    return held == _source_stamp(data, test_type, recovery_commanded)
+    return held == _source_stamp(data, test_type)

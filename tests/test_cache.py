@@ -73,33 +73,32 @@ def write(stamp):
         yaml.dump({"meta": {"source": stamp}, "flaps": None}, f)
 
 
-good = _source_stamp(CAPTURE, "soak", False)
+good = _source_stamp(CAPTURE, "soak")
 write(good)
-assert is_current(CAPTURE, path, "soak", False), "an untouched yaml is current"
+assert is_current(CAPTURE, path, "soak"), "an untouched yaml is current"
 
 for field, wrong in (("converter", "0" * 32), ("hash", "0" * 32),
-                     ("file", "elsewhere.xlsx"), ("test_type", "reset"),
-                     ("recovery_commanded", True)):
+                     ("file", "elsewhere.xlsx"), ("test_type", "reset")):
     stamp = dict(good)
     stamp[field] = wrong
     write(stamp)
-    assert not is_current(CAPTURE, path, "soak", False), \
+    assert not is_current(CAPTURE, path, "soak"), \
         f"a different {field} must not be served from cache"
 print("ok  is_current: every stamped field invalidates when it differs")
 
 write({"file": good["file"], "hash": good["hash"]})
-assert not is_current(CAPTURE, path, "soak", False), "a partial stamp is not a match"
+assert not is_current(CAPTURE, path, "soak"), "a partial stamp is not a match"
 
 with open(path, "w", encoding="utf-8") as f:
     f.write("flaps: []\n")
-assert not is_current(CAPTURE, path, "soak", False), "a yaml with no meta is not current"
+assert not is_current(CAPTURE, path, "soak"), "a yaml with no meta is not current"
 
 with open(path, "w", encoding="utf-8") as f:
     f.write("}{ not yaml\n")
-assert not is_current(CAPTURE, path, "soak", False), "an unreadable yaml is not current"
+assert not is_current(CAPTURE, path, "soak"), "an unreadable yaml is not current"
 
 os.remove(path)
-assert not is_current(CAPTURE, path, "soak", False), "a missing yaml is not current"
+assert not is_current(CAPTURE, path, "soak"), "a missing yaml is not current"
 print("ok  is_current: a stamp it cannot read is never a match")
 
 print()
