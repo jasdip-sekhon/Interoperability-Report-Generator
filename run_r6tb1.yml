@@ -1,8 +1,5 @@
-# Rack6-TB1, against the real captures rather than the redacted fixtures.
-#
-# Five testcases, matching the sections of the hand-built report. Each reset/shut
-# testcase is captured twice - DUT-run and Ref-run - and neither half is authoritative,
-# so both are listed and merged.
+# Rack6-TB1, against the real captures. Testcases appear in the deck in the order
+# written here, and neither half of a DUT/Ref pair is authoritative on its own.
 
 report: Rack6-TB1
 
@@ -16,8 +13,7 @@ testcases:
       - C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-Traffic-Soak_20260803_081158.xlsx
 
   - name: Reset
-    # a reset is about how links come back, and whether they come back clean; BER is
-    # soak-only, so this testcase never has it (see data_to_yml._collect_fec_metrics)
+    # BER is soak-only, so no reset or shut testcase ever has it
     metrics: [flaps, link_up, temps]
     recovery_commanded: true
     captures:
@@ -26,30 +22,30 @@ testcases:
       - label: Ref
         file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop_R6TB1-DR8-reset-Ref_20260710_104300.xlsx
 
-  - name: Shut No-Shut
-    # links are taken down on purpose, so BER saturates and says nothing
+  # the shut family, every DUT before any Ref; All Lanes shuts every lane of every port
+  - name: Shut No-Shut All Lanes DUT
     metrics: [flaps, link_up, temps]
     recovery_commanded: true
-    captures:
-      - label: DUT
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
-      - label: Ref
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-DUT_20260720_005610.xlsx
 
-  - name: Lane 1-1
-    # one lane is shut; link-up is half empty and BER saturates
+  - name: Shut No-Shut Lane 1-1 DUT
+    # Rack6 charts no link-up for the lane cases, unlike R12
     metrics: [flaps, temps]
-    captures:
-      - label: DUT
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
-      - label: Ref
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.xlsx
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane1-1-DUT_20260720_084743.xlsx
 
-  - name: Lane 2-8
-    # as above
+  - name: Shut No-Shut Lane 2-8 DUT
     metrics: [flaps, temps]
-    captures:
-      - label: DUT
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
-      - label: Ref
-        file: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.xlsx
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lan2-8-DUT_20260716_175028.xlsx
+
+  - name: Shut No-Shut All Lanes Ref
+    metrics: [flaps, link_up, temps]
+    recovery_commanded: true
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-DR8-shut-Ref_20260708_071508.xlsx
+
+  - name: Shut No-Shut Lane 1-1 Ref
+    metrics: [flaps, temps]
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-ln1-1-Ref_20260710_173722.xlsx
+
+  - name: Shut No-Shut Lane 2-8 Ref
+    metrics: [flaps, temps]
+    capture: C:/Users/jasdi/Documents/Pinewave-graph-gen-test/Data_Files/Terahop-R6TB1-shut-lane2-8-Ref_20260711_014848.xlsx
